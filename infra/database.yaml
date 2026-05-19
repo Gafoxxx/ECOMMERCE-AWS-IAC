@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Fase 3: Capa de Datos - RDS MySQL con Acceso Publico'
+
+Parameters:
+  DBUsername:
+    Type: String
+    Default: dbadmin
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+
+Resources:
+  # 1. Grupo de Seguridad para la DB (El Firewall)
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Permitir acceso a MySQL desde cualquier lugar (Solo para desarrollo)
+      VpcId: !ImportValue Ecommerce-VPC-ID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+
+  # 2. Grupo de subredes
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Grupo de subredes para la DB
+      SubnetIds: !Split [ ",", !ImportValue Ecommerce-Public-Subnets ]
+
+  # 3. Instancia de Base de Datos
+  EcommerceDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: ecommercedb
+      AllocatedStorage: '20'
+      DBInstanceClass: db.t3.micro
+      Engine: mysql
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups: 
+        - !GetAtt DBSecurityGroup.GroupId
+      PubliclyAccessible: true # ¡ESTO ES CLAVE PARA CONECTAR DESDE TU PC!
+      Tags:
+        - Key: Name
+          Value: Ecommerce-Database
+
+Outputs:
+  DBEndpoint:
+    Description: URL de conexion para la aplicacion
+    Value: !GetAtt EcommerceDB.Endpoint.Address
+    Export:
+      Name: Ecommerce-DB-Endpoint
