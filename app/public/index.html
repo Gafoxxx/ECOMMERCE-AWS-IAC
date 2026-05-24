@@ -3,96 +3,187 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>E-Commerce - Catálogo</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>Mi E-Commerce</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <div class="brand">
-        <img src="/assets/logo.svg" alt="Mi E-Commerce" class="logo-img">
-        <a href="/" class="logo">Mi <span>E-Commerce</span></a>
-      </div>
+      <a href="/" class="brand" aria-label="Mi E-Commerce">
+        <img src="/assets/logo.svg" alt="" class="logo-img">
+      </a>
 
       <div class="search">
-        <input id="search-input" type="search" placeholder="Buscar productos..." aria-label="Buscar productos">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"></path></svg>
+        <input id="search-input" type="search" placeholder="Buscar productos" aria-label="Buscar productos">
       </div>
 
-      <div class="actions">
+      <nav class="actions" aria-label="Acciones">
         <button id="show-login" class="btn ghost">Ingresar</button>
-        <button id="show-register" class="btn outline">Registrar</button>
-        <button id="logout" class="btn ghost" style="display:none">Salir</button>
-        <button id="cart-toggle" class="cart-btn" aria-label="Ver carrito">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="10" cy="20" r="1" fill="currentColor"></circle><circle cx="18" cy="20" r="1" fill="currentColor"></circle></svg>
+        <button id="show-register" class="btn outline">Crear cuenta</button>
+        <button id="logout" class="btn ghost" hidden>Salir</button>
+        <button id="cart-toggle" class="icon-btn cart-btn" aria-label="Ver carrito">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h2l.5 3m0 0L7 15h10l3-9H5.5Zm3.5 16a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path></svg>
           <span id="cart-count" class="badge">0</span>
         </button>
-      </div>
+      </nav>
     </div>
   </header>
 
-  <main class="container main-grid">
-    <section id="catalog" class="catalog">
-      <div class="hero">
-        <h1>Encuentra productos increíbles</h1>
-        <p>Envío rápido, garantía de satisfacción.</p>
+  <main>
+    <section class="store-hero">
+      <div class="container hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow">E-commerce cloud native</p>
+          <h1>Mi E-Commerce</h1>
+          <p class="hero-text">Productos esenciales con compra rapida, carrito persistente y pago simulado sobre una arquitectura escalable en AWS.</p>
+        </div>
+        <div class="hero-panel" aria-label="Resumen de tienda">
+          <div>
+            <span class="metric-value" id="metric-products">0</span>
+            <span class="metric-label">productos</span>
+          </div>
+          <div>
+            <span class="metric-value">24/7</span>
+            <span class="metric-label">disponible</span>
+          </div>
+          <div>
+            <span class="metric-value">AWS</span>
+            <span class="metric-label">infraestructura</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="container catalog-section" aria-labelledby="catalog-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Catalogo</p>
+          <h2 id="catalog-title">Productos destacados</h2>
+        </div>
+        <div id="result-count" class="result-count">Cargando...</div>
       </div>
       <div id="products" class="product-grid" aria-live="polite"></div>
     </section>
-
-    <aside id="cart-panel" class="cart-panel" aria-hidden="true">
-      <div class="cart-header">
-        <h2>Tu carrito</h2>
-        <button id="close-cart" class="close">×</button>
-      </div>
-      <div id="cart-items" class="cart-items"></div>
-      <div class="cart-footer">
-        <div class="total"><span>Total:</span> <strong id="cart-total">$0.00</strong></div>
-        <button id="checkout" class="btn primary">Pagar (simular)</button>
-      </div>
-    </aside>
   </main>
 
-  <!-- Modal genérico -->
+  <div id="cart-backdrop" class="drawer-backdrop" aria-hidden="true"></div>
+  <aside id="cart-panel" class="cart-panel" aria-hidden="true" aria-label="Carrito de compras">
+    <div class="cart-header">
+      <div>
+        <p class="eyebrow">Checkout</p>
+        <h2>Tu carrito</h2>
+      </div>
+      <button id="close-cart" class="icon-btn" aria-label="Cerrar carrito">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div id="cart-items" class="cart-items"></div>
+    <div class="cart-footer">
+      <div class="total"><span>Total</span><strong id="cart-total">$0.00</strong></div>
+      <button id="checkout" class="btn primary full">Pagar ahora</button>
+    </div>
+  </aside>
+
   <div id="modal" class="modal" aria-hidden="true">
     <div class="modal-content" role="dialog" aria-modal="true">
-      <button id="modal-close" class="modal-close" aria-label="Cerrar">×</button>
+      <button id="modal-close" class="icon-btn modal-close" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+      </button>
       <div id="modal-body"></div>
     </div>
   </div>
+
+  <div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
 
   <script>
     const API = '/api';
 
     function getToken(){ return localStorage.getItem('token'); }
     function setToken(t){ localStorage.setItem('token', t); }
+    function money(value){ return '$' + Number(value || 0).toFixed(2); }
+    function escapeHtml(value){
+      return String(value || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+    }
+
+    function showToast(message, type = 'success'){
+      const toast = $(`<div class="toast ${type}">${escapeHtml(message)}</div>`);
+      $('#toast-root').append(toast);
+      setTimeout(() => toast.addClass('show'), 20);
+      setTimeout(() => {
+        toast.removeClass('show');
+        setTimeout(() => toast.remove(), 220);
+      }, 3200);
+    }
+
+    function setAuthUI(){
+      const logged = Boolean(getToken());
+      $('#show-login, #show-register').prop('hidden', logged);
+      $('#logout').prop('hidden', !logged);
+    }
+
+    function renderLoading(){
+      $('#products').html(Array.from({ length: 6 }).map(() => `
+        <article class="product-card skeleton-card">
+          <div class="photo skeleton"></div>
+          <div class="product-body">
+            <div class="line skeleton"></div>
+            <div class="line short skeleton"></div>
+            <div class="line tiny skeleton"></div>
+          </div>
+        </article>
+      `).join(''));
+    }
 
     function renderProducts(data){
-      const html = (data || []).map(p => {
-        const img = p.image || `https://picsum.photos/seed/${p.id || Math.floor(Math.random()*1000)}/600/400`;
+      const products = data || [];
+      $('#metric-products').text(window._products ? window._products.length : products.length);
+      $('#result-count').text(products.length === 1 ? '1 producto' : `${products.length} productos`);
+
+      const html = products.map(p => {
+        const name = escapeHtml(p.name);
+        const desc = escapeHtml((p.description || '').substring(0, 130));
+        const img = escapeHtml(p.image || `/assets/images/product-${((p.id || 1) % 6) || 6}.svg`);
+        const stock = p.stock != null ? Number(p.stock) : null;
+        const stockClass = stock === 0 ? 'out' : stock <= 10 ? 'low' : '';
+        const disabled = stock === 0 ? 'disabled' : '';
         return `
           <article class="product-card" data-id="${p.id}">
-            <div class="photo"><img src="${img}" alt="${(p.name||'Producto')} image"></div>
+            <div class="photo"><img src="${img}" alt="${name}"></div>
             <div class="product-body">
-              <h3 class="product-name">${p.name}</h3>
-              <p class="product-desc">${(p.description||'').substring(0,120)}</p>
-              <div class="product-meta">
-                <div class="price">$${parseFloat(p.price).toFixed(2)}</div>
-                <div class="stock">Stock: ${p.stock != null ? p.stock : '—'}</div>
+              <div class="product-title-row">
+                <h3 class="product-name">${name}</h3>
+                <span class="stock ${stockClass}">${stock === null ? 'Stock' : stock + ' disp.'}</span>
               </div>
-              <div class="product-actions">
-                <button class="btn btn-small btn-add" data-id="${p.id}">Agregar al carrito</button>
+              <p class="product-desc">${desc}</p>
+              <div class="product-meta">
+                <div class="price">${money(p.price)}</div>
+                <button class="btn primary btn-add" data-id="${p.id}" ${disabled}>Agregar</button>
               </div>
             </div>
           </article>
         `;
       }).join('');
-      $('#products').html(html || '<div class="empty">No hay productos disponibles.</div>');
+
+      $('#products').html(html || '<div class="empty wide">No encontramos productos con esa busqueda.</div>');
     }
 
     function loadProducts(){
-      $.get(API + '/products').done(data => { window._products = data || []; renderProducts(window._products); });
+      renderLoading();
+      $.get(API + '/products')
+        .done(data => {
+          window._products = data || [];
+          renderProducts(window._products);
+        })
+        .fail(() => {
+          $('#result-count').text('Sin conexion');
+          $('#products').html('<div class="empty wide">No fue posible cargar el catalogo.</div>');
+          showToast('No fue posible cargar productos', 'error');
+        });
     }
 
     function normalizeCartResponse(resp){
@@ -102,53 +193,144 @@
       return [];
     }
 
-    function loadCart(){
-      const token = getToken();
-      if (!token) { $('#cart-items').html('<div class="empty">Inicia sesión para ver el carrito.</div>'); $('#cart-count').text('0'); $('#cart-total').text('$0.00'); return; }
-      $.ajax({ url: API + '/cart', headers: { Authorization: 'Bearer ' + token } })
-        .done(function(resp){
-          const items = normalizeCartResponse(resp);
-          if (!items.length) {
-            $('#cart-items').html('<div class="empty">Carrito vacío</div>'); $('#cart-count').text('0'); $('#cart-total').text('$0.00'); return;
-          }
-          const html = items.map(i => `
-            <div class="cart-row" data-id="${i.ProductId || (i.Product && i.Product.id)}">
-              <img src="${i.Product && (`https://picsum.photos/seed/${i.Product.id}/120/80`)}" alt="${i.Product.name}" />
-              <div class="c-body">
-                <div class="c-name">${i.Product.name}</div>
-                <div class="c-qty">Cantidad: ${i.quantity}</div>
-                <div class="c-sub">Subtotal: $${(parseFloat(i.quantity) * parseFloat(i.Product.price)).toFixed(2)}</div>
-              </div>
-              <button class="btn small remove-item" data-id="${i.ProductId || (i.Product && i.Product.id)}">Eliminar</button>
+    function renderCartItems(items){
+      if (!items.length) {
+        $('#cart-items').html('<div class="empty">Tu carrito esta vacio.</div>');
+        $('#cart-count').text('0');
+        $('#cart-total').text('$0.00');
+        return;
+      }
+
+      const html = items.map(i => {
+        const product = i.Product || {};
+        const productId = i.ProductId || product.id;
+        const img = escapeHtml(product.image || `/assets/images/product-${((product.id || 1) % 6) || 6}.svg`);
+        const name = escapeHtml(product.name);
+        const quantity = Number(i.quantity || 0);
+        const subtotal = quantity * Number(product.price || 0);
+        return `
+          <div class="cart-row" data-id="${productId}">
+            <img src="${img}" alt="${name}">
+            <div class="c-body">
+              <div class="c-name">${name}</div>
+              <div class="c-qty">Cantidad ${quantity}</div>
+              <div class="c-sub">${money(subtotal)}</div>
             </div>
-          `).join('');
-          $('#cart-items').html(html);
-          const total = items.reduce((s,it)=> s + (parseFloat(it.quantity) * parseFloat(it.Product.price || 0)), 0);
-          $('#cart-total').text('$' + total.toFixed(2));
-          const count = items.reduce((s,it)=> s + (parseInt(it.quantity)||0), 0);
-          $('#cart-count').text(count);
-        })
-        .fail(()=>{ $('#cart-items').html('<div class="empty">Error al cargar carrito</div>'); $('#cart-count').text('0'); $('#cart-total').text('$0.00'); });
+            <button class="icon-btn danger remove-item" data-id="${productId}" aria-label="Eliminar ${name}">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      $('#cart-items').html(html);
+      const total = items.reduce((s,it) => s + (Number(it.quantity || 0) * Number((it.Product && it.Product.price) || 0)), 0);
+      const count = items.reduce((s,it) => s + Number(it.quantity || 0), 0);
+      $('#cart-total').text(money(total));
+      $('#cart-count').text(count);
     }
 
-    // UI helpers: modal and cart panel
-    function openModal(html){ $('#modal-body').html(html); $('#modal').addClass('open').attr('aria-hidden','false'); }
-    function closeModal(){ $('#modal').removeClass('open').attr('aria-hidden','true').find('#modal-body').html(''); }
-    function openCart(){ $('#cart-panel').addClass('open').attr('aria-hidden','false'); loadCart(); }
-    function closeCart(){ $('#cart-panel').removeClass('open').attr('aria-hidden','true'); }
+    function loadCart(){
+      const token = getToken();
+      if (!token) {
+        renderCartItems([]);
+        $('#cart-items').html('<div class="empty">Inicia sesion para guardar tu carrito.</div>');
+        return;
+      }
 
-    // Events
+      $('#cart-items').html('<div class="empty">Cargando carrito...</div>');
+      $.ajax({ url: API + '/cart', headers: { Authorization: 'Bearer ' + token } })
+        .done(resp => renderCartItems(normalizeCartResponse(resp)))
+        .fail(() => {
+          renderCartItems([]);
+          $('#cart-items').html('<div class="empty">No fue posible cargar el carrito.</div>');
+          showToast('No fue posible cargar el carrito', 'error');
+        });
+    }
+
+    function openModal(html){
+      $('#modal-body').html(html);
+      $('#modal').addClass('open').attr('aria-hidden','false');
+      setTimeout(() => $('#modal input:first').trigger('focus'), 80);
+    }
+
+    function closeModal(){
+      $('#modal').removeClass('open').attr('aria-hidden','true').find('#modal-body').html('');
+    }
+
+    function openCart(){
+      $('#cart-panel').addClass('open').attr('aria-hidden','false');
+      $('#cart-backdrop').addClass('open').attr('aria-hidden','false');
+      $('body').addClass('drawer-open');
+      loadCart();
+    }
+
+    function closeCart(){
+      $('#cart-panel').removeClass('open').attr('aria-hidden','true');
+      $('#cart-backdrop').removeClass('open').attr('aria-hidden','true');
+      $('body').removeClass('drawer-open');
+    }
+
+    function authForm(type){
+      const isLogin = type === 'login';
+      return `
+        <div class="auth-form">
+          <p class="eyebrow">${isLogin ? 'Acceso' : 'Cuenta nueva'}</p>
+          <h3>${isLogin ? 'Ingresar' : 'Crear cuenta'}</h3>
+          <label>
+            <span>Usuario</span>
+            <input id="${isLogin ? 'login' : 'register'}-username" autocomplete="username">
+          </label>
+          ${isLogin ? '' : `
+            <label>
+              <span>Email</span>
+              <input id="register-email" type="email" autocomplete="email">
+            </label>
+          `}
+          <label>
+            <span>Contrasena</span>
+            <input id="${isLogin ? 'login' : 'register'}-password" type="password" autocomplete="${isLogin ? 'current-password' : 'new-password'}">
+          </label>
+          <div class="modal-actions">
+            <button id="${isLogin ? 'do-login' : 'do-register'}" class="btn primary">${isLogin ? 'Entrar' : 'Registrar'}</button>
+            <button id="modal-cancel" class="btn ghost">Cancelar</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function showLogin(){ openModal(authForm('login')); }
+    function showRegister(){ openModal(authForm('register')); }
+
     $(document).on('click', '#cart-toggle', openCart);
-    $(document).on('click', '#close-cart', closeCart);
-    $(document).on('click', '#modal-close', closeModal);
+    $(document).on('click', '#close-cart, #cart-backdrop', closeCart);
+    $(document).on('click', '#modal-close, #modal-cancel', closeModal);
+    $(document).on('click', '#show-login', showLogin);
+    $(document).on('click', '#show-register', showRegister);
+
+    $(document).on('keydown', function(e){
+      if (e.key === 'Escape') {
+        closeModal();
+        closeCart();
+      }
+    });
 
     $(document).on('click', '.btn-add', function(){
       const id = $(this).data('id');
       const token = getToken();
-      if (!token) { showLogin(); return; }
+      if (!token) {
+        showLogin();
+        showToast('Inicia sesion para agregar productos', 'info');
+        return;
+      }
+      const button = $(this).prop('disabled', true).text('Agregando');
       $.ajax({ url: API + '/cart/add', method: 'POST', headers: { Authorization: 'Bearer ' + token }, contentType: 'application/json', data: JSON.stringify({ productId: id, quantity: 1 }) })
-        .done(()=>{ loadCart(); alert('Añadido al carrito'); })
-        .fail(()=> alert('Error al añadir al carrito'));
+        .done(resp => {
+          renderCartItems(normalizeCartResponse(resp));
+          showToast('Producto agregado al carrito');
+        })
+        .fail(() => showToast('No fue posible agregar el producto', 'error'))
+        .always(() => button.prop('disabled', false).text('Agregar'));
     });
 
     $(document).on('click', '.remove-item', function(){
@@ -156,75 +338,82 @@
       const token = getToken();
       if (!token) return showLogin();
       $.ajax({ url: API + '/cart/remove', method: 'POST', headers: { Authorization: 'Bearer ' + token }, contentType: 'application/json', data: JSON.stringify({ productId }) })
-        .done(()=> loadCart())
-        .fail(()=> alert('Error al eliminar'));
+        .done(resp => {
+          renderCartItems(normalizeCartResponse(resp));
+          showToast('Producto eliminado');
+        })
+        .fail(() => showToast('No fue posible eliminar el producto', 'error'));
     });
-
-    function showLogin(){
-      const html = `
-        <h3>Ingresar</h3>
-        <input id="login-username" placeholder="Usuario"/>
-        <input id="login-password" type="password" placeholder="Contraseña"/>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <button id="do-login" class="btn primary">Entrar</button>
-          <button id="modal-cancel" class="btn ghost">Cancelar</button>
-        </div>
-      `;
-      openModal(html);
-    }
-
-    function showRegister(){
-      const html = `
-        <h3>Registrar</h3>
-        <input id="register-username" placeholder="Usuario"/>
-        <input id="register-email" placeholder="Email"/>
-        <input id="register-password" type="password" placeholder="Contraseña (min 6)"/>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <button id="do-register" class="btn primary">Registrar</button>
-          <button id="modal-cancel" class="btn ghost">Cancelar</button>
-        </div>
-      `;
-      openModal(html);
-    }
-
-    $(document).on('click', '#show-login', showLogin);
-    $(document).on('click', '#show-register', showRegister);
-    $(document).on('click', '#modal-cancel', closeModal);
 
     $(document).on('click', '#do-register', function(){
       const username = $('#register-username').val();
       const email = $('#register-email').val();
       const password = $('#register-password').val();
-      $.post(API + '/auth/register', { username, email, password }).done(res=>{ setToken(res.token); closeModal(); $('#logout').show(); loadCart(); }).fail(err=>{ alert('Error registrando'); });
+      $.post(API + '/auth/register', { username, email, password })
+        .done(res => {
+          setToken(res.token);
+          setAuthUI();
+          closeModal();
+          loadCart();
+          showToast('Cuenta creada correctamente');
+        })
+        .fail(() => showToast('No fue posible crear la cuenta', 'error'));
     });
 
     $(document).on('click', '#do-login', function(){
       const username = $('#login-username').val();
       const password = $('#login-password').val();
-      $.post(API + '/auth/login', { username, password }).done(res=>{ setToken(res.token); closeModal(); $('#logout').show(); loadCart(); }).fail(()=>{ alert('Credenciales inválidas'); });
+      $.post(API + '/auth/login', { username, password })
+        .done(res => {
+          setToken(res.token);
+          setAuthUI();
+          closeModal();
+          loadCart();
+          showToast('Sesion iniciada');
+        })
+        .fail(() => showToast('Credenciales invalidas', 'error'));
     });
 
-    $(document).on('click', '#logout', function(){ localStorage.removeItem('token'); $('#logout').hide(); loadCart(); });
+    $(document).on('click', '#logout', function(){
+      localStorage.removeItem('token');
+      setAuthUI();
+      loadCart();
+      showToast('Sesion cerrada', 'info');
+    });
 
     $(document).on('click', '#checkout', function(){
       const token = getToken();
       if (!token) return showLogin();
-      $.ajax({ url: API + '/checkout', method: 'POST', headers: { Authorization: 'Bearer ' + token } }).done(res=>{ alert(res.message || 'Pago simulado'); loadCart(); }).fail(()=> alert('Error en checkout'));
+      const button = $(this).prop('disabled', true).text('Procesando');
+      $.ajax({ url: API + '/checkout', method: 'POST', headers: { Authorization: 'Bearer ' + token } })
+        .done(res => {
+          showToast(res.message || 'Pago simulado exitoso');
+          loadCart();
+          loadProducts();
+        })
+        .fail(() => showToast('No fue posible procesar el pago', 'error'))
+        .always(() => button.prop('disabled', false).text('Pagar ahora'));
     });
 
-    // Search (client-side)
     let searchTimer;
     $(document).on('input', '#search-input', function(){
       clearTimeout(searchTimer);
-      const q = $(this).val().toLowerCase();
-      searchTimer = setTimeout(()=>{
+      const q = $(this).val().trim().toLowerCase();
+      searchTimer = setTimeout(() => {
         if (!q) return renderProducts(window._products || []);
-        const filtered = (window._products || []).filter(p => (p.name||'').toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q));
+        const filtered = (window._products || []).filter(p =>
+          (p.name || '').toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q)
+        );
         renderProducts(filtered);
-      }, 200);
+      }, 160);
     });
 
-    $(document).ready(function(){ loadProducts(); loadCart(); if (getToken()) $('#logout').show(); });
+    $(document).ready(function(){
+      setAuthUI();
+      loadProducts();
+      loadCart();
+    });
   </script>
 </body>
 </html>
