@@ -141,12 +141,44 @@ Resources:
       MinSize: '2'
       MaxSize: '6'
       DesiredCapacity: '2'
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
       TargetGroupARNs:
         - !Ref WebAppTargetGroup
       Tags:
         - Key: Name
           Value: Ecommerce-EC2-Instance
           PropagateAtLaunch: true
+        - Key: Project
+          Value: Ecommerce-AWS-IAC
+          PropagateAtLaunch: true
+
+  WebAppScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref WebAppASG
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 60
+
+  WebAppCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: Ecommerce-ASG-CPU-Scaling-Watch
+      AlarmDescription: Observa la CPU promedio usada por la politica de auto escalado.
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 60
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref WebAppASG
 
 Outputs:
   ALBUrl:

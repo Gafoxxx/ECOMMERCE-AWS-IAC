@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Fase 4b: Bastion Host publico para acceso administrativo controlado'
+
+Parameters:
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64'
+    Description: AMI Amazon Linux 2023 mas reciente
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: vockey
+    Description: Key pair existente para conectarse por SSH al bastion
+  SSHLocation:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR autorizado para SSH. Para produccion usar tu IP publica con /32.
+
+Resources:
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Permitir SSH controlado hacia el Bastion Host
+      VpcId: !ImportValue Ecommerce-VPC-ID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SSHLocation
+      Tags:
+        - Key: Name
+          Value: Ecommerce-Bastion-SG
+        - Key: Project
+          Value: Ecommerce-AWS-IAC
+
+  BastionHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      SubnetId: !Select [ 0, !Split [ ",", !ImportValue Ecommerce-Public-Subnets ] ]
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
+      Tags:
+        - Key: Name
+          Value: Ecommerce-Bastion
+        - Key: Project
+          Value: Ecommerce-AWS-IAC
+
+Outputs:
+  BastionPublicIp:
+    Description: IP publica del Bastion Host
+    Value: !GetAtt BastionHost.PublicIp
+    Export:
+      Name: Ecommerce-Bastion-Public-IP
+  BastionSecurityGroupId:
+    Description: Security Group del Bastion Host
+    Value: !GetAtt BastionSecurityGroup.GroupId
+    Export:
+      Name: Ecommerce-Bastion-SG-ID

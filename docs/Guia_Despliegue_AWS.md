@@ -14,8 +14,9 @@ Los stacks deben desplegarse en este orden porque usan exports/imports entre pla
 
 1. `infra/networking.yaml`: VPC, subredes publicas, subredes privadas, NAT Gateway y security group base de la aplicacion.
 2. `infra/database.yaml`: RDS MySQL privado en subredes privadas.
-3. `infra/compute.yaml`: Application Load Balancer, Launch Template y Auto Scaling Group.
-4. `infra/monitoring.yaml`: CloudWatch alarms, SNS y CloudTrail.
+3. `infra/compute.yaml`: Application Load Balancer, Launch Configuration y Auto Scaling Group.
+4. `infra/bastion.yaml`: Bastion Host publico para acceso administrativo controlado.
+5. `infra/monitoring.yaml`: CloudWatch alarms, SNS y CloudTrail opcional.
 
 ## Comandos
 
@@ -43,17 +44,21 @@ aws cloudformation deploy \
   --template-file infra/compute.yaml \
   --parameter-overrides \
     GitHubRepoUrl='https://github.com/Gafoxxx/ECOMMERCE-AWS-IAC' \
+    GitHubBranch='main' \
     DBPassword='CambiarPassword123' \
     JWTSecret='cambiar-por-un-secreto-largo-y-seguro'
 ```
 
-Si el laboratorio expone un IAM Instance Profile valido para EC2, agregalo al comando anterior:
-
 ```bash
-EC2InstanceProfileName='NombreDelInstanceProfile'
+aws cloudformation deploy \
+  --stack-name ecommerce-bastion \
+  --template-file infra/bastion.yaml \
+  --parameter-overrides \
+    KeyName='vockey' \
+    SSHLocation='0.0.0.0/0'
 ```
 
-Si no existe un Instance Profile disponible, deja ese parametro vacio y el stack desplegara sin perfil IAM en las instancias.
+Para una configuracion mas segura, reemplaza `SSHLocation='0.0.0.0/0'` por tu IP publica en formato `/32`, por ejemplo `203.0.113.10/32`.
 
 ```bash
 aws cloudformation deploy \
@@ -65,6 +70,8 @@ aws cloudformation deploy \
 ```
 
 Despues de desplegar `ecommerce-monitoring`, confirma la suscripcion que llegara al correo configurado en SNS.
+
+Si el nombre `ecommerce-monitoring` quedo bloqueado por un rollback anterior de CloudTrail, usa `ecommerce-monitoring-v2` como nombre del stack.
 
 Si el laboratorio permite crear CloudTrail, cambia `EnableCloudTrail=false` por `EnableCloudTrail=true`. En algunos sandboxes academicos esta accion esta bloqueada por permisos IAM.
 
@@ -92,7 +99,7 @@ Abre la URL entregada por el ALB y valida:
 - Las instancias EC2 de la aplicacion se ubican en subredes privadas.
 - El ALB es el unico punto publico HTTP.
 - RDS no es publico y solo acepta MySQL desde el security group de la aplicacion.
-- Las instancias usan `LabInstanceProfile` para acceso por Systems Manager Session Manager.
+- El Bastion Host vive en una subred publica y restringe SSH por CIDR configurable.
 - CloudTrail puede registrar actividad de la cuenta en un bucket S3 privado si el laboratorio permite `cloudtrail:CreateTrail`.
 
 ## Monitoreo
@@ -104,3 +111,7 @@ El stack `monitoring.yaml` crea:
 - Alarma de errores 5XX de la aplicacion.
 - Topico SNS para notificaciones por email.
 - CloudTrail opcional con validacion de logs.
+
+## Auto Scaling
+
+El stack `compute.yaml` mantiene dos instancias por defecto y escala hasta seis instancias. La politica `TargetTrackingScaling` busca mantener la CPU promedio del Auto Scaling Group alrededor del 60 por ciento, respetando el limite del laboratorio de maximo 9 instancias EC2.

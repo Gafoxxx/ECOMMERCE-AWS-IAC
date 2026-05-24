@@ -8,6 +8,8 @@ The project includes:
 - Networking stack: VPC, public/private subnets, Internet Gateway and NAT Gateway.
 - Data stack: private RDS MySQL database.
 - Compute stack: Application Load Balancer and Auto Scaling Group running EC2 instances.
+- Bastion stack: public Bastion Host for controlled administrative access.
 - Monitoring stack: CloudWatch alarms, SNS notifications and CloudTrail audit logs.
 
 Deployment guide: [docs/Guia_Despliegue_AWS.md](docs/Guia_Despliegue_AWS.md)
+Rubric coverage: [docs/Cumplimiento_Rubrica.md](docs/Cumplimiento_Rubrica.md)
