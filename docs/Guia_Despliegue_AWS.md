@@ -60,6 +60,15 @@ aws cloudformation deploy \
 
 Para una configuracion mas segura, reemplaza `SSHLocation='0.0.0.0/0'` por tu IP publica en formato `/32`, por ejemplo `203.0.113.10/32`.
 
+Obtiene la IP publica del Bastion Host:
+
+```bash
+aws ec2 describe-instances \
+  --filters "Name=tag:Name,Values=Ecommerce-Bastion" "Name=instance-state-name,Values=running" \
+  --query "Reservations[0].Instances[0].PublicIpAddress" \
+  --output text
+```
+
 ```bash
 aws cloudformation deploy \
   --stack-name ecommerce-monitoring \
