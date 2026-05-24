@@ -105,9 +105,20 @@
 
     function getToken(){ return localStorage.getItem('token'); }
     function setToken(t){ localStorage.setItem('token', t); }
-    function money(value){ return '$' + Number(value || 0).toFixed(2); }
+    function clearSession(){ localStorage.removeItem('token'); }
+    function money(value){
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        maximumFractionDigits: 0
+      }).format(Number(value || 0));
+    }
     function escapeHtml(value){
       return String(value || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+    }
+    function fallbackImage(id){
+      const images = ['audifonos.jpg', 'reloj.jpg', 'mochila.jpg', 'lampara.jpg', 'altavoz.jpg', 'cargador.jpg'];
+      return `/assets/images/${images[((Number(id) || 1) - 1) % images.length]}`;
     }
 
     function showToast(message, type = 'success'){
@@ -124,6 +135,14 @@
       const logged = Boolean(getToken());
       $('#show-login, #show-register').prop('hidden', logged);
       $('#logout').prop('hidden', !logged);
+    }
+
+    function handleAuthExpired(){
+      clearSession();
+      setAuthUI();
+      renderCartItems([]);
+      $('#cart-items').html('<div class="empty">Tu sesion expiro. Inicia sesion de nuevo.</div>');
+      showToast('Tu sesion expiro. Inicia sesion de nuevo.', 'info');
     }
 
     function renderLoading(){
@@ -147,7 +166,7 @@
       const html = products.map(p => {
         const name = escapeHtml(p.name);
         const desc = escapeHtml((p.description || '').substring(0, 130));
-        const img = escapeHtml(p.image || `/assets/images/product-${((p.id || 1) % 6) || 6}.svg`);
+        const img = escapeHtml(p.image || fallbackImage(p.id));
         const stock = p.stock != null ? Number(p.stock) : null;
         const stockClass = stock === 0 ? 'out' : stock <= 10 ? 'low' : '';
         const disabled = stock === 0 ? 'disabled' : '';
@@ -204,7 +223,7 @@
       const html = items.map(i => {
         const product = i.Product || {};
         const productId = i.ProductId || product.id;
-        const img = escapeHtml(product.image || `/assets/images/product-${((product.id || 1) % 6) || 6}.svg`);
+        const img = escapeHtml(product.image || fallbackImage(product.id));
         const name = escapeHtml(product.name);
         const quantity = Number(i.quantity || 0);
         const subtotal = quantity * Number(product.price || 0);
@@ -241,7 +260,8 @@
       $('#cart-items').html('<div class="empty">Cargando carrito...</div>');
       $.ajax({ url: API + '/cart', headers: { Authorization: 'Bearer ' + token } })
         .done(resp => renderCartItems(normalizeCartResponse(resp)))
-        .fail(() => {
+        .fail(xhr => {
+          if (xhr.status === 401) return handleAuthExpired();
           renderCartItems([]);
           $('#cart-items').html('<div class="empty">No fue posible cargar el carrito.</div>');
           showToast('No fue posible cargar el carrito', 'error');
@@ -329,7 +349,10 @@
           renderCartItems(normalizeCartResponse(resp));
           showToast('Producto agregado al carrito');
         })
-        .fail(() => showToast('No fue posible agregar el producto', 'error'))
+        .fail(xhr => {
+          if (xhr.status === 401) return handleAuthExpired();
+          showToast('No fue posible agregar el producto', 'error');
+        })
         .always(() => button.prop('disabled', false).text('Agregar'));
     });
 
@@ -342,7 +365,10 @@
           renderCartItems(normalizeCartResponse(resp));
           showToast('Producto eliminado');
         })
-        .fail(() => showToast('No fue posible eliminar el producto', 'error'));
+        .fail(xhr => {
+          if (xhr.status === 401) return handleAuthExpired();
+          showToast('No fue posible eliminar el producto', 'error');
+        });
     });
 
     $(document).on('click', '#do-register', function(){
@@ -375,7 +401,7 @@
     });
 
     $(document).on('click', '#logout', function(){
-      localStorage.removeItem('token');
+      clearSession();
       setAuthUI();
       loadCart();
       showToast('Sesion cerrada', 'info');
@@ -391,7 +417,10 @@
           loadCart();
           loadProducts();
         })
-        .fail(() => showToast('No fue posible procesar el pago', 'error'))
+        .fail(xhr => {
+          if (xhr.status === 401) return handleAuthExpired();
+          showToast('No fue posible procesar el pago', 'error');
+        })
         .always(() => button.prop('disabled', false).text('Pagar ahora'));
     });
 

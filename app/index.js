@@ -52,19 +52,25 @@ sequelize.sync({ alter: true })
   .then(async () => {
     console.log('✅ Conexión a DB exitosa y tablas sincronizadas.');
     try {
-      const count = await Product.count();
-      if (!count) {
-        const samples = [
-          { name: 'Auriculares Wireless', description: 'Auriculares inalámbricos con cancelación de ruido.', price: 59.99, stock: 50, image: '/assets/images/product-1.svg' },
-          { name: 'Reloj Inteligente', description: 'Smartwatch con monitor de actividad y notificaciones.', price: 129.90, stock: 30, image: '/assets/images/product-2.svg' },
-          { name: 'Mochila Urbana', description: 'Mochila resistente al agua para uso diario.', price: 39.50, stock: 80, image: '/assets/images/product-3.svg' },
-          { name: 'Lámpara LED', description: 'Lámpara de escritorio con brillo regulable.', price: 24.99, stock: 120, image: '/assets/images/product-4.svg' },
-          { name: 'Altavoz Bluetooth', description: 'Altavoz portátil con gran autonomía.', price: 45.00, stock: 40, image: '/assets/images/product-5.svg' },
-          { name: 'Cargador USB-C', description: 'Cargador rápido compatible con la mayoría de dispositivos.', price: 19.99, stock: 200, image: '/assets/images/product-6.svg' }
-        ];
-        await Product.bulkCreate(samples, { validate: true });
-        console.log('⚡️ Productos de ejemplo creados en la base de datos.');
+      const samples = [
+        { name: 'Audífonos Bluetooth Pro', description: 'Audífonos inalámbricos con cancelación de ruido y estuche de carga para uso diario.', price: 189900, stock: 50, image: '/assets/images/audifonos.jpg' },
+        { name: 'Reloj Inteligente Fit', description: 'Smartwatch con monitor de actividad, frecuencia cardíaca y notificaciones del celular.', price: 329900, stock: 30, image: '/assets/images/reloj.jpg' },
+        { name: 'Mochila Ejecutiva Impermeable', description: 'Mochila resistente al agua con compartimento para portátil y organizadores internos.', price: 149900, stock: 80, image: '/assets/images/mochila.jpg' },
+        { name: 'Lámpara LED de Escritorio', description: 'Lámpara regulable con luz cálida y fría, ideal para estudio, trabajo remoto y lectura.', price: 89900, stock: 120, image: '/assets/images/lampara.jpg' },
+        { name: 'Parlante Bluetooth Portátil', description: 'Parlante compacto con batería de larga duración y sonido potente para interiores y exteriores.', price: 159900, stock: 40, image: '/assets/images/altavoz.jpg' },
+        { name: 'Cargador Rápido USB-C 30W', description: 'Cargador compacto compatible con celulares, tablets y accesorios USB-C.', price: 69900, stock: 200, image: '/assets/images/cargador.jpg' }
+      ];
+
+      const existingProducts = await Product.findAll({ order: [['id', 'ASC']], limit: samples.length });
+      for (const [index, product] of samples.entries()) {
+        const existing = existingProducts[index];
+        if (existing) {
+          await existing.update(product);
+        } else {
+          await Product.create(product);
+        }
       }
+      console.log('⚡️ Productos de ejemplo sincronizados en la base de datos.');
     } catch (err) {
       console.error('❌ Error al crear productos de ejemplo:', err);
     }
