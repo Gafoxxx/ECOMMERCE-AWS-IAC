@@ -1,0 +1,170 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Fase 5: Monitoreo, alertas SNS y auditoria CloudTrail'
+
+Parameters:
+  NotificationEmail:
+    Type: String
+    Description: Email que recibira las alertas de CloudWatch y SNS
+    AllowedPattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+    ConstraintDescription: Debe ser un email valido
+  EnableCloudTrail:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Crear CloudTrail solo si el laboratorio permite cloudtrail:CreateTrail
+
+Conditions:
+  CreateCloudTrail: !Equals [ !Ref EnableCloudTrail, "true" ]
+
+Resources:
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: Ecommerce-Alerts
+      Tags:
+        - Key: Name
+          Value: Ecommerce-Alerts
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+      TopicArn: !Ref AlertTopic
+
+  HighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: Ecommerce-High-CPU
+      AlarmDescription: Alerta cuando el promedio de CPU del ASG supera el 70 por ciento.
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 70
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !ImportValue Ecommerce-ASG-Name
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  UnhealthyTargetsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: Ecommerce-Unhealthy-Targets
+      AlarmDescription: Alerta cuando el ALB detecta instancias no saludables.
+      Namespace: AWS/ApplicationELB
+      MetricName: UnHealthyHostCount
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !ImportValue Ecommerce-ALB-FullName
+        - Name: TargetGroup
+          Value: !ImportValue Ecommerce-TG-FullName
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  Target5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: Ecommerce-Target-5XX
+      AlarmDescription: Alerta cuando la aplicacion responde con errores 5XX.
+      Namespace: AWS/ApplicationELB
+      MetricName: HTTPCode_Target_5XX_Count
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !ImportValue Ecommerce-ALB-FullName
+        - Name: TargetGroup
+          Value: !ImportValue Ecommerce-TG-FullName
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  CloudTrailBucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateCloudTrail
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: Ecommerce-CloudTrail-Logs
+
+  CloudTrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: CreateCloudTrail
+    Properties:
+      Bucket: !Ref CloudTrailBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt CloudTrailBucket.Arn
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub '${CloudTrailBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+
+  AccountTrail:
+    Type: AWS::CloudTrail::Trail
+    Condition: CreateCloudTrail
+    DependsOn: CloudTrailBucketPolicy
+    Properties:
+      TrailName: Ecommerce-CloudTrail
+      S3BucketName: !Ref CloudTrailBucket
+      IsLogging: true
+      IncludeGlobalServiceEvents: true
+      IsMultiRegionTrail: false
+      EnableLogFileValidation: true
+      Tags:
+        - Key: Name
+          Value: Ecommerce-CloudTrail
+
+Outputs:
+  AlertTopicArn:
+    Description: ARN del topico SNS de alertas
+    Value: !Ref AlertTopic
+    Export:
+      Name: Ecommerce-Alert-Topic-Arn
+  CloudTrailBucketName:
+    Description: Bucket S3 donde CloudTrail guarda logs
+    Value: !If [ CreateCloudTrail, !Ref CloudTrailBucket, "CloudTrail no creado por permisos del laboratorio" ]
+    Export:
+      Name: Ecommerce-CloudTrail-Bucket

@@ -1,7 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Fase 3: Capa de Datos - RDS MySQL con Acceso Publico'
+Description: 'Fase 3: Capa de Datos - RDS MySQL privado'
 
 Parameters:
+  DBName:
+    Type: String
+    Default: ecommercedb
   DBUsername:
     Type: String
     Default: dbadmin
@@ -11,46 +14,66 @@ Parameters:
     MinLength: 8
 
 Resources:
-  # 1. Grupo de Seguridad para la DB (El Firewall)
   DBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Permitir acceso a MySQL desde cualquier lugar (Solo para desarrollo)
+      GroupDescription: Permitir MySQL solo desde las instancias de la aplicacion
       VpcId: !ImportValue Ecommerce-VPC-ID
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 3306
           ToPort: 3306
-          CidrIp: 0.0.0.0/0
+          SourceSecurityGroupId: !ImportValue Ecommerce-App-SG-ID
+      Tags:
+        - Key: Name
+          Value: Ecommerce-DB-SG
 
-  # 2. Grupo de subredes
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
-      DBSubnetGroupDescription: Grupo de subredes para la DB
-      SubnetIds: !Split [ ",", !ImportValue Ecommerce-Public-Subnets ]
+      DBSubnetGroupDescription: Grupo de subredes privadas para la DB
+      SubnetIds: !Split [ ",", !ImportValue Ecommerce-Private-Subnets ]
+      Tags:
+        - Key: Name
+          Value: Ecommerce-DB-Subnet-Group
 
-  # 3. Instancia de Base de Datos
   EcommerceDB:
     Type: AWS::RDS::DBInstance
     Properties:
-      DBName: ecommercedb
+      DBName: !Ref DBName
       AllocatedStorage: '20'
       DBInstanceClass: db.t3.micro
       Engine: mysql
       MasterUsername: !Ref DBUsername
       MasterUserPassword: !Ref DBPassword
       DBSubnetGroupName: !Ref DBSubnetGroup
-      VPCSecurityGroups: 
+      VPCSecurityGroups:
         - !GetAtt DBSecurityGroup.GroupId
-      PubliclyAccessible: true # ¡ESTO ES CLAVE PARA CONECTAR DESDE TU PC!
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 1
+      DeletionProtection: false
       Tags:
         - Key: Name
           Value: Ecommerce-Database
 
 Outputs:
+  DBName:
+    Description: Nombre de la base de datos usada por la aplicacion
+    Value: !Ref DBName
+    Export:
+      Name: Ecommerce-DB-Name
+  DBUsername:
+    Description: Usuario maestro de la base de datos
+    Value: !Ref DBUsername
+    Export:
+      Name: Ecommerce-DB-Username
   DBEndpoint:
     Description: URL de conexion para la aplicacion
     Value: !GetAtt EcommerceDB.Endpoint.Address
     Export:
       Name: Ecommerce-DB-Endpoint
+  DBSecurityGroupId:
+    Description: Security Group privado de RDS
+    Value: !GetAtt DBSecurityGroup.GroupId
+    Export:
+      Name: Ecommerce-DB-SG-ID

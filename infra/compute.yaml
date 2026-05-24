@@ -1,0 +1,166 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Fase 4: Computo, Auto Scaling y Application Load Balancer'
+
+Parameters:
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64'
+    Description: "Usa la ultima AMI de Amazon Linux 2023"
+  GitHubRepoUrl:
+    Type: String
+    Description: "URL de tu repositorio de GitHub"
+    Default: "https://github.com/Gafoxxx/ECOMMERCE-AWS-IAC"
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: "Debe ser la misma contraseña usada al crear el stack de RDS"
+  JWTSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+    Description: "Secreto para firmar los tokens JWT de la aplicacion"
+
+Resources:
+  # 1. Grupos de Seguridad
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Permitir HTTP desde Internet al ALB"
+      VpcId: !ImportValue Ecommerce-VPC-ID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  WebFromALBIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !ImportValue Ecommerce-App-SG-ID
+      IpProtocol: tcp
+      FromPort: 3000
+      ToPort: 3000
+      SourceSecurityGroupId: !Ref ALBSecurityGroup
+
+  # 2. Target Group (A donde el ALB enviara el trafico)
+  WebAppTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: Ecommerce-TG
+      Port: 3000
+      Protocol: HTTP
+      VpcId: !ImportValue Ecommerce-VPC-ID
+      HealthCheckPath: "/health"
+      HealthCheckProtocol: HTTP
+      Matcher:
+        HttpCode: "200"
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+
+  # 3. Application Load Balancer (ALB)
+  WebAppALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: Ecommerce-ALB
+      Subnets: !Split [ ",", !ImportValue Ecommerce-Public-Subnets ]
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Scheme: internet-facing
+
+  # 4. Listener del ALB
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref WebAppALB
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref WebAppTargetGroup
+
+  # 5. Launch Configuration (receta compatible con sandboxes academicos)
+  WebAppLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: t2.micro
+      SecurityGroups:
+        - !ImportValue Ecommerce-App-SG-ID
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            yum update -y
+            # Instalar Node.js y Git
+            curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+            yum install -y nodejs git
+            npm install -g pm2
+
+            # Moverse al directorio del usuario y clonar repo
+            cd /home/ec2-user
+            git clone ${GitHubRepoUrl} repo
+            cd repo/app
+
+            # Crear variables de entorno dinamicamente
+            cat <<EOT >> .env
+            DB_NAME=${DBName}
+            DB_USER=${DBUser}
+            DB_PASSWORD=${DBPassword}
+            DB_HOST=${DBHost}
+            JWT_SECRET=${JWTSecret}
+            PORT=3000
+            EOT
+
+            # Instalar dependencias y arrancar
+            npm install
+            pm2 start index.js
+            pm2 save
+            pm2 startup
+          - DBHost: !ImportValue Ecommerce-DB-Endpoint
+            DBName: !ImportValue Ecommerce-DB-Name
+            DBUser: !ImportValue Ecommerce-DB-Username
+            DBPassword: !Ref DBPassword
+            JWTSecret: !Ref JWTSecret
+            GitHubRepoUrl: !Ref GitHubRepoUrl
+
+  # 6. Auto Scaling Group (ASG)
+  WebAppASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: Ecommerce-ASG
+      VPCZoneIdentifier: !Split [ ",", !ImportValue Ecommerce-Private-Subnets ]
+      LaunchConfigurationName: !Ref WebAppLaunchConfiguration
+      MinSize: '2'
+      MaxSize: '6'
+      DesiredCapacity: '2'
+      TargetGroupARNs:
+        - !Ref WebAppTargetGroup
+      Tags:
+        - Key: Name
+          Value: Ecommerce-EC2-Instance
+          PropagateAtLaunch: true
+
+Outputs:
+  ALBUrl:
+    Description: "URL publica de tu E-commerce"
+    Value: !Join [ "", [ "http://", !GetAtt WebAppALB.DNSName ] ]
+    Export:
+      Name: Ecommerce-ALB-URL
+  ALBFullName:
+    Description: "Nombre completo del ALB para metricas CloudWatch"
+    Value: !GetAtt WebAppALB.LoadBalancerFullName
+    Export:
+      Name: Ecommerce-ALB-FullName
+  TargetGroupFullName:
+    Description: "Nombre completo del Target Group para metricas CloudWatch"
+    Value: !GetAtt WebAppTargetGroup.TargetGroupFullName
+    Export:
+      Name: Ecommerce-TG-FullName
+  AutoScalingGroupName:
+    Description: "Nombre del Auto Scaling Group de la aplicacion"
+    Value: !Ref WebAppASG
+    Export:
+      Name: Ecommerce-ASG-Name

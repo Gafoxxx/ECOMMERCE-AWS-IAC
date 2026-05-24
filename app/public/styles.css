@@ -1,0 +1,77 @@
+:root{
+  --bg: #f6f8fb;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --text: #0f172a;
+  --primary: #0b76ff;
+  --accent: #ff6b6b;
+  --glass: rgba(255,255,255,0.6);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;color:var(--text);background:var(--bg);}
+.container{width:min(1200px,95%);margin:0 auto}
+
+.site-header{background:linear-gradient(90deg,#ffffffaa,#f0f4ff);backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(12,15,30,0.04);position:sticky;top:0;z-index:40}
+.header-inner{display:flex;align-items:center;gap:16px;padding:12px 0}
+.brand .logo{font-weight:700;color:var(--text);text-decoration:none;font-size:1.15rem}
+.brand .logo span{color:var(--primary)}
+
+.brand{display:flex;align-items:center;gap:8px}
+.brand .logo-img{height:36px;width:auto;border-radius:8px}
+
+.search{flex:1}
+.search input{width:100%;padding:8px 12px;border-radius:10px;border:1px solid #e6eefc;background:#fff;outline:none}
+
+.actions{display:flex;align-items:center;gap:8px}
+.btn{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
+.btn.primary{background:var(--primary);color:#fff}
+.btn.ghost{background:transparent;border:1px solid rgba(0,0,0,0.06)}
+.btn.outline{background:transparent;border:1px solid rgba(11,118,255,0.18);color:var(--primary)}
+.btn.small{padding:6px 8px;font-size:0.9rem}
+.btn.btn-small{padding:6px 8px}
+
+.cart-btn{position:relative;background:transparent;border:0;cursor:pointer;padding:6px}
+.badge{position:absolute;top:-6px;right:-6px;background:var(--accent);color:#fff;border-radius:999px;padding:3px 6px;font-size:12px}
+
+.main-grid{display:grid;grid-template-columns:1fr 360px;gap:20px;padding:20px 0}
+
+.hero{background:linear-gradient(180deg,#f8fbff,#ffffff);padding:18px;border-radius:12px;margin-bottom:16px}
+.hero h1{margin:0 0 6px;font-size:1.6rem}
+.hero p{margin:0;color:var(--muted)}
+
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.product-card{background:var(--card);border-radius:12px;box-shadow:0 4px 10px rgba(12,15,30,0.06);overflow:hidden;display:flex;flex-direction:column}
+.product-card .photo{height:160px;overflow:hidden}
+.product-card .photo img{width:100%;height:100%;object-fit:cover;display:block}
+.product-body{padding:12px;display:flex;flex-direction:column;gap:8px}
+.product-name{margin:0;font-size:1.02rem}
+.product-desc{margin:0;color:var(--muted);font-size:0.92rem}
+.product-meta{display:flex;justify-content:space-between;align-items:center}
+.price{font-weight:700;color:var(--text)}
+.stock{font-size:0.85rem;color:var(--muted)}
+.product-actions{display:flex;justify-content:flex-end}
+
+.cart-panel{background:linear-gradient(180deg,#fff,#fbfdff);border-left:1px solid rgba(12,15,30,0.03);padding:12px;border-radius:12px;position:relative}
+.cart-header{display:flex;align-items:center;justify-content:space-between}
+.cart-items{margin-top:12px;display:flex;flex-direction:column;gap:12px;max-height:56vh;overflow:auto;padding-right:4px}
+.cart-row{display:flex;gap:12px;align-items:center;background:var(--card);padding:8px;border-radius:8px}
+.cart-row img{width:80px;height:56px;object-fit:cover;border-radius:6px}
+.cart-row .c-body{flex:1}
+.cart-row .c-name{font-weight:600}
+.cart-row .c-sub{color:var(--muted);font-size:0.9rem}
+.remove-item{background:#ffefef;border:1px solid rgba(255,107,107,0.15);color:var(--accent)}
+.cart-footer{margin-top:12px;display:flex;flex-direction:column;gap:12px}
+.cart-footer .total{display:flex;justify-content:space-between;align-items:center;font-size:1.02rem}
+
+.modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(7,12,20,0.35);opacity:0;pointer-events:none;transition:opacity .2s}
+.modal.open{opacity:1;pointer-events:auto}
+.modal-content{background:var(--card);padding:18px;border-radius:12px;min-width:280px;max-width:420px;box-shadow:0 10px 30px rgba(12,15,30,0.12)}
+.modal-close{position:absolute;right:12px;top:8px;border:0;background:transparent;font-size:20px}
+
+.empty{padding:18px;color:var(--muted);text-align:center}
+
+@media (max-width:900px){
+  .main-grid{grid-template-columns:1fr;}
+  .cart-panel{position:fixed;right:12px;bottom:12px;width:320px;transform:translateY(0);z-index:60}
+}

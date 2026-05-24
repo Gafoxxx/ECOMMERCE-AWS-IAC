@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>E-Commerce - Catálogo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <img src="/assets/logo.svg" alt="Mi E-Commerce" class="logo-img">
+        <a href="/" class="logo">Mi <span>E-Commerce</span></a>
+      </div>
+
+      <div class="search">
+        <input id="search-input" type="search" placeholder="Buscar productos..." aria-label="Buscar productos">
+      </div>
+
+      <div class="actions">
+        <button id="show-login" class="btn ghost">Ingresar</button>
+        <button id="show-register" class="btn outline">Registrar</button>
+        <button id="logout" class="btn ghost" style="display:none">Salir</button>
+        <button id="cart-toggle" class="cart-btn" aria-label="Ver carrito">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="10" cy="20" r="1" fill="currentColor"></circle><circle cx="18" cy="20" r="1" fill="currentColor"></circle></svg>
+          <span id="cart-count" class="badge">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-grid">
+    <section id="catalog" class="catalog">
+      <div class="hero">
+        <h1>Encuentra productos increíbles</h1>
+        <p>Envío rápido, garantía de satisfacción.</p>
+      </div>
+      <div id="products" class="product-grid" aria-live="polite"></div>
+    </section>
+
+    <aside id="cart-panel" class="cart-panel" aria-hidden="true">
+      <div class="cart-header">
+        <h2>Tu carrito</h2>
+        <button id="close-cart" class="close">×</button>
+      </div>
+      <div id="cart-items" class="cart-items"></div>
+      <div class="cart-footer">
+        <div class="total"><span>Total:</span> <strong id="cart-total">$0.00</strong></div>
+        <button id="checkout" class="btn primary">Pagar (simular)</button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Modal genérico -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <button id="modal-close" class="modal-close" aria-label="Cerrar">×</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api';
+
+    function getToken(){ return localStorage.getItem('token'); }
+    function setToken(t){ localStorage.setItem('token', t); }
+
+    function renderProducts(data){
+      const html = (data || []).map(p => {
+        const img = p.image || `https://picsum.photos/seed/${p.id || Math.floor(Math.random()*1000)}/600/400`;
+        return `
+          <article class="product-card" data-id="${p.id}">
+            <div class="photo"><img src="${img}" alt="${(p.name||'Producto')} image"></div>
+            <div class="product-body">
+              <h3 class="product-name">${p.name}</h3>
+              <p class="product-desc">${(p.description||'').substring(0,120)}</p>
+              <div class="product-meta">
+                <div class="price">$${parseFloat(p.price).toFixed(2)}</div>
+                <div class="stock">Stock: ${p.stock != null ? p.stock : '—'}</div>
+              </div>
+              <div class="product-actions">
+                <button class="btn btn-small btn-add" data-id="${p.id}">Agregar al carrito</button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+      $('#products').html(html || '<div class="empty">No hay productos disponibles.</div>');
+    }
+
+    function loadProducts(){
+      $.get(API + '/products').done(data => { window._products = data || []; renderProducts(window._products); });
+    }
+
+    function normalizeCartResponse(resp){
+      if (!resp) return [];
+      if (Array.isArray(resp)) return resp;
+      if (resp.items) return resp.items;
+      return [];
+    }
+
+    function loadCart(){
+      const token = getToken();
+      if (!token) { $('#cart-items').html('<div class="empty">Inicia sesión para ver el carrito.</div>'); $('#cart-count').text('0'); $('#cart-total').text('$0.00'); return; }
+      $.ajax({ url: API + '/cart', headers: { Authorization: 'Bearer ' + token } })
+        .done(function(resp){
+          const items = normalizeCartResponse(resp);
+          if (!items.length) {
+            $('#cart-items').html('<div class="empty">Carrito vacío</div>'); $('#cart-count').text('0'); $('#cart-total').text('$0.00'); return;
+          }
+          const html = items.map(i => `
+            <div class="cart-row" data-id="${i.ProductId || (i.Product && i.Product.id)}">
+              <img src="${i.Product && (`https://picsum.photos/seed/${i.Product.id}/120/80`)}" alt="${i.Product.name}" />
+              <div class="c-body">
+                <div class="c-name">${i.Product.name}</div>
+                <div class="c-qty">Cantidad: ${i.quantity}</div>
+                <div class="c-sub">Subtotal: $${(parseFloat(i.quantity) * parseFloat(i.Product.price)).toFixed(2)}</div>
+              </div>
+              <button class="btn small remove-item" data-id="${i.ProductId || (i.Product && i.Product.id)}">Eliminar</button>
+            </div>
+          `).join('');
+          $('#cart-items').html(html);
+          const total = items.reduce((s,it)=> s + (parseFloat(it.quantity) * parseFloat(it.Product.price || 0)), 0);
+          $('#cart-total').text('$' + total.toFixed(2));
+          const count = items.reduce((s,it)=> s + (parseInt(it.quantity)||0), 0);
+          $('#cart-count').text(count);
+        })
+        .fail(()=>{ $('#cart-items').html('<div class="empty">Error al cargar carrito</div>'); $('#cart-count').text('0'); $('#cart-total').text('$0.00'); });
+    }
+
+    // UI helpers: modal and cart panel
+    function openModal(html){ $('#modal-body').html(html); $('#modal').addClass('open').attr('aria-hidden','false'); }
+    function closeModal(){ $('#modal').removeClass('open').attr('aria-hidden','true').find('#modal-body').html(''); }
+    function openCart(){ $('#cart-panel').addClass('open').attr('aria-hidden','false'); loadCart(); }
+    function closeCart(){ $('#cart-panel').removeClass('open').attr('aria-hidden','true'); }
+
+    // Events
+    $(document).on('click', '#cart-toggle', openCart);
+    $(document).on('click', '#close-cart', closeCart);
+    $(document).on('click', '#modal-close', closeModal);
+
+    $(document).on('click', '.btn-add', function(){
+      const id = $(this).data('id');
+      const token = getToken();
+      if (!token) { showLogin(); return; }
+      $.ajax({ url: API + '/cart/add', method: 'POST', headers: { Authorization: 'Bearer ' + token }, contentType: 'application/json', data: JSON.stringify({ productId: id, quantity: 1 }) })
+        .done(()=>{ loadCart(); alert('Añadido al carrito'); })
+        .fail(()=> alert('Error al añadir al carrito'));
+    });
+
+    $(document).on('click', '.remove-item', function(){
+      const productId = $(this).data('id');
+      const token = getToken();
+      if (!token) return showLogin();
+      $.ajax({ url: API + '/cart/remove', method: 'POST', headers: { Authorization: 'Bearer ' + token }, contentType: 'application/json', data: JSON.stringify({ productId }) })
+        .done(()=> loadCart())
+        .fail(()=> alert('Error al eliminar'));
+    });
+
+    function showLogin(){
+      const html = `
+        <h3>Ingresar</h3>
+        <input id="login-username" placeholder="Usuario"/>
+        <input id="login-password" type="password" placeholder="Contraseña"/>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button id="do-login" class="btn primary">Entrar</button>
+          <button id="modal-cancel" class="btn ghost">Cancelar</button>
+        </div>
+      `;
+      openModal(html);
+    }
+
+    function showRegister(){
+      const html = `
+        <h3>Registrar</h3>
+        <input id="register-username" placeholder="Usuario"/>
+        <input id="register-email" placeholder="Email"/>
+        <input id="register-password" type="password" placeholder="Contraseña (min 6)"/>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button id="do-register" class="btn primary">Registrar</button>
+          <button id="modal-cancel" class="btn ghost">Cancelar</button>
+        </div>
+      `;
+      openModal(html);
+    }
+
+    $(document).on('click', '#show-login', showLogin);
+    $(document).on('click', '#show-register', showRegister);
+    $(document).on('click', '#modal-cancel', closeModal);
+
+    $(document).on('click', '#do-register', function(){
+      const username = $('#register-username').val();
+      const email = $('#register-email').val();
+      const password = $('#register-password').val();
+      $.post(API + '/auth/register', { username, email, password }).done(res=>{ setToken(res.token); closeModal(); $('#logout').show(); loadCart(); }).fail(err=>{ alert('Error registrando'); });
+    });
+
+    $(document).on('click', '#do-login', function(){
+      const username = $('#login-username').val();
+      const password = $('#login-password').val();
+      $.post(API + '/auth/login', { username, password }).done(res=>{ setToken(res.token); closeModal(); $('#logout').show(); loadCart(); }).fail(()=>{ alert('Credenciales inválidas'); });
+    });
+
+    $(document).on('click', '#logout', function(){ localStorage.removeItem('token'); $('#logout').hide(); loadCart(); });
+
+    $(document).on('click', '#checkout', function(){
+      const token = getToken();
+      if (!token) return showLogin();
+      $.ajax({ url: API + '/checkout', method: 'POST', headers: { Authorization: 'Bearer ' + token } }).done(res=>{ alert(res.message || 'Pago simulado'); loadCart(); }).fail(()=> alert('Error en checkout'));
+    });
+
+    // Search (client-side)
+    let searchTimer;
+    $(document).on('input', '#search-input', function(){
+      clearTimeout(searchTimer);
+      const q = $(this).val().toLowerCase();
+      searchTimer = setTimeout(()=>{
+        if (!q) return renderProducts(window._products || []);
+        const filtered = (window._products || []).filter(p => (p.name||'').toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q));
+        renderProducts(filtered);
+      }, 200);
+    });
+
+    $(document).ready(function(){ loadProducts(); loadCart(); if (getToken()) $('#logout').show(); });
+  </script>
+</body>
+</html>
