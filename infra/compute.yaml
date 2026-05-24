@@ -10,6 +10,10 @@ Parameters:
     Type: String
     Description: "URL de tu repositorio de GitHub"
     Default: "https://github.com/Gafoxxx/ECOMMERCE-AWS-IAC"
+  GitHubBranch:
+    Type: String
+    Default: main
+    Description: "Rama del repositorio que clonaran las instancias EC2"
   DBPassword:
     Type: String
     NoEcho: true
@@ -101,7 +105,7 @@ Resources:
 
             # Moverse al directorio del usuario y clonar repo
             cd /home/ec2-user
-            git clone ${GitHubRepoUrl} repo
+            git clone --branch ${GitHubBranch} --single-branch ${GitHubRepoUrl} repo
             cd repo/app
 
             # Crear variables de entorno dinamicamente
@@ -125,6 +129,7 @@ Resources:
             DBPassword: !Ref DBPassword
             JWTSecret: !Ref JWTSecret
             GitHubRepoUrl: !Ref GitHubRepoUrl
+            GitHubBranch: !Ref GitHubBranch
 
   # 6. Auto Scaling Group (ASG)
   WebAppASG:
