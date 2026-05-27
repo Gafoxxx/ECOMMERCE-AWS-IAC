@@ -9,6 +9,7 @@ const Product = require('./models/Product');
 const Cart = require('./models/Cart');
 const CartItem = require('./models/CartItem');
 const Order = require('./models/Order');
+const OrderItem = require('./models/OrderItem');
 
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
@@ -33,9 +34,16 @@ Cart.belongsTo(User);
 
 Cart.belongsToMany(Product, { through: CartItem });
 Product.belongsToMany(Cart, { through: CartItem });
+Cart.hasMany(CartItem);
+CartItem.belongsTo(Cart);
+Product.hasMany(CartItem);
+CartItem.belongsTo(Product);
 
 Order.belongsTo(User);
 User.hasMany(Order);
+Order.hasMany(OrderItem);
+OrderItem.belongsTo(Order);
+OrderItem.belongsTo(Product);
 
 // Rutas
 app.use('/api/auth', authRoutes);

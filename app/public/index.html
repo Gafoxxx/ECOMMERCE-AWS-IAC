@@ -85,7 +85,7 @@
     <div id="cart-items" class="cart-items"></div>
     <div class="cart-footer">
       <div class="total"><span>Total</span><strong id="cart-total">$0.00</strong></div>
-      <button id="checkout" class="btn primary full">Pagar ahora</button>
+	      <button id="checkout" class="btn primary full">Continuar al envio</button>
     </div>
   </aside>
 
@@ -116,10 +116,13 @@
     function escapeHtml(value){
       return String(value || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
     }
-    function fallbackImage(id){
-      const images = ['audifonos.jpg', 'reloj.jpg', 'mochila.jpg', 'lampara.jpg', 'altavoz.jpg', 'cargador.jpg'];
-      return `/assets/images/${images[((Number(id) || 1) - 1) % images.length]}`;
-    }
+	    function fallbackImage(id){
+	      const images = ['audifonos.jpg', 'reloj.jpg', 'mochila.jpg', 'lampara.jpg', 'altavoz.jpg', 'cargador.jpg'];
+	      return `/assets/images/${images[((Number(id) || 1) - 1) % images.length]}`;
+	    }
+	    function findProduct(id){
+	      return (window._products || []).find(p => Number(p.id) === Number(id));
+	    }
 
     function showToast(message, type = 'success'){
       const toast = $(`<div class="toast ${type}">${escapeHtml(message)}</div>`);
@@ -170,22 +173,27 @@
         const stock = p.stock != null ? Number(p.stock) : null;
         const stockClass = stock === 0 ? 'out' : stock <= 10 ? 'low' : '';
         const disabled = stock === 0 ? 'disabled' : '';
-        return `
-          <article class="product-card" data-id="${p.id}">
-            <div class="photo"><img src="${img}" alt="${name}"></div>
-            <div class="product-body">
-              <div class="product-title-row">
-                <h3 class="product-name">${name}</h3>
-                <span class="stock ${stockClass}">${stock === null ? 'Stock' : stock + ' disp.'}</span>
-              </div>
-              <p class="product-desc">${desc}</p>
-              <div class="product-meta">
-                <div class="price">${money(p.price)}</div>
-                <button class="btn primary btn-add" data-id="${p.id}" ${disabled}>Agregar</button>
-              </div>
-            </div>
-          </article>
-        `;
+	        return `
+	          <article class="product-card" data-id="${p.id}">
+	            <button class="photo product-preview-trigger" data-id="${p.id}" aria-label="Ver ${name}">
+	              <img src="${img}" alt="${name}">
+	            </button>
+	            <div class="product-body">
+	              <div class="product-title-row">
+	                <h3 class="product-name">${name}</h3>
+	                <span class="stock ${stockClass}">${stock === null ? 'Stock' : stock + ' disp.'}</span>
+	              </div>
+	              <p class="product-desc">${desc}</p>
+	              <div class="product-meta">
+	                <div class="price">${money(p.price)}</div>
+	                <div class="product-actions">
+	                  <button class="btn ghost btn-preview" data-id="${p.id}">Ver</button>
+	                  <button class="btn primary btn-add" data-id="${p.id}" ${disabled}>Agregar</button>
+	                </div>
+	              </div>
+	            </div>
+	          </article>
+	        `;
       }).join('');
 
       $('#products').html(html || '<div class="empty wide">No encontramos productos con esa busqueda.</div>');
@@ -212,13 +220,15 @@
       return [];
     }
 
-    function renderCartItems(items){
-      if (!items.length) {
-        $('#cart-items').html('<div class="empty">Tu carrito esta vacio.</div>');
-        $('#cart-count').text('0');
-        $('#cart-total').text('$0.00');
-        return;
-      }
+	    function renderCartItems(items){
+	      window._cartItems = items || [];
+	      if (!items.length) {
+	        $('#cart-items').html('<div class="empty">Tu carrito esta vacio.</div>');
+	        $('#cart-count').text('0');
+	        $('#cart-total').text('$0.00');
+	        $('#checkout').prop('disabled', true);
+	        return;
+	      }
 
       const html = items.map(i => {
         const product = i.Product || {};
@@ -245,9 +255,10 @@
       $('#cart-items').html(html);
       const total = items.reduce((s,it) => s + (Number(it.quantity || 0) * Number((it.Product && it.Product.price) || 0)), 0);
       const count = items.reduce((s,it) => s + Number(it.quantity || 0), 0);
-      $('#cart-total').text(money(total));
-      $('#cart-count').text(count);
-    }
+	      $('#cart-total').text(money(total));
+	      $('#cart-count').text(count);
+	      $('#checkout').prop('disabled', false);
+	    }
 
     function loadCart(){
       const token = getToken();
@@ -268,15 +279,17 @@
         });
     }
 
-    function openModal(html){
-      $('#modal-body').html(html);
-      $('#modal').addClass('open').attr('aria-hidden','false');
-      setTimeout(() => $('#modal input:first').trigger('focus'), 80);
-    }
+	    function openModal(html, mode = ''){
+	      $('#modal-body').html(html);
+	      $('#modal .modal-content').removeClass('wide confirm').addClass(mode);
+	      $('#modal').addClass('open').attr('aria-hidden','false');
+	      setTimeout(() => $('#modal input:first').trigger('focus'), 80);
+	    }
 
-    function closeModal(){
-      $('#modal').removeClass('open').attr('aria-hidden','true').find('#modal-body').html('');
-    }
+	    function closeModal(){
+	      $('#modal').removeClass('open').attr('aria-hidden','true').find('#modal-body').html('');
+	      $('#modal .modal-content').removeClass('wide confirm');
+	    }
 
     function openCart(){
       $('#cart-panel').addClass('open').attr('aria-hidden','false');
@@ -291,7 +304,7 @@
       $('body').removeClass('drawer-open');
     }
 
-    function authForm(type){
+	    function authForm(type){
       const isLogin = type === 'login';
       return `
         <div class="auth-form">
@@ -319,14 +332,209 @@
       `;
     }
 
-    function showLogin(){ openModal(authForm('login')); }
-    function showRegister(){ openModal(authForm('register')); }
+	    function showLogin(){ openModal(authForm('login')); }
+	    function showRegister(){ openModal(authForm('register')); }
+
+	    function productPreview(product){
+	      const img = escapeHtml(product.image || fallbackImage(product.id));
+	      const name = escapeHtml(product.name);
+	      const desc = escapeHtml(product.description || '');
+	      const stock = product.stock != null ? Number(product.stock) : null;
+	      const stockClass = stock === 0 ? 'out' : stock <= 10 ? 'low' : '';
+	      const disabled = stock === 0 ? 'disabled' : '';
+	      return `
+	        <div class="product-preview">
+	          <div class="preview-media">
+	            <img src="${img}" alt="${name}">
+	          </div>
+	          <div class="preview-info">
+	            <p class="eyebrow">Detalle del producto</p>
+	            <h3>${name}</h3>
+	            <p class="preview-desc">${desc}</p>
+	            <div class="preview-meta">
+	              <div>
+	                <span>Precio</span>
+	                <strong>${money(product.price)}</strong>
+	              </div>
+	              <span class="stock ${stockClass}">${stock === null ? 'Stock disponible' : stock + ' disponibles'}</span>
+	            </div>
+	            <label class="qty-field">
+	              <span>Cantidad</span>
+	              <input id="preview-qty" type="number" min="1" max="${stock || 99}" value="1" ${disabled}>
+	            </label>
+	            <div class="modal-actions">
+	              <button class="btn primary btn-add-preview" data-id="${product.id}" ${disabled}>Agregar al carrito</button>
+	              <button id="modal-cancel" class="btn ghost">Cerrar</button>
+	            </div>
+	          </div>
+	        </div>
+	      `;
+	    }
+
+	    function showProductPreview(id){
+	      const product = findProduct(id);
+	      if (product) {
+	        openModal(productPreview(product), 'wide');
+	        return;
+	      }
+	      $.get(API + '/products/' + id)
+	        .done(p => openModal(productPreview(p), 'wide'))
+	        .fail(() => showToast('No fue posible cargar el producto', 'error'));
+	    }
+
+	    function addToCart(id, quantity, button){
+	      const token = getToken();
+	      if (!token) {
+	        showLogin();
+	        showToast('Inicia sesion para agregar productos', 'info');
+	        return;
+	      }
+	      const originalText = button ? button.text() : '';
+	      if (button) button.prop('disabled', true).text('Agregando');
+	      $.ajax({
+	        url: API + '/cart/add',
+	        method: 'POST',
+	        headers: { Authorization: 'Bearer ' + token },
+	        contentType: 'application/json',
+	        data: JSON.stringify({ productId: id, quantity: Number(quantity || 1) })
+	      })
+	        .done(resp => {
+	          renderCartItems(normalizeCartResponse(resp));
+	          showToast('Producto agregado al carrito');
+	        })
+	        .fail(xhr => {
+	          if (xhr.status === 401) return handleAuthExpired();
+	          showToast('No fue posible agregar el producto', 'error');
+	        })
+	        .always(() => {
+	          if (button) button.prop('disabled', false).text(originalText || 'Agregar');
+	        });
+	    }
+
+	    function checkoutForm(items){
+	      const total = items.reduce((s,it) => s + (Number(it.quantity || 0) * Number((it.Product && it.Product.price) || 0)), 0);
+	      const rows = items.map(i => {
+	        const product = i.Product || {};
+	        const name = escapeHtml(product.name);
+	        const quantity = Number(i.quantity || 0);
+	        const subtotal = quantity * Number(product.price || 0);
+	        return `
+	          <div class="summary-row">
+	            <span>${name} x ${quantity}</span>
+	            <strong>${money(subtotal)}</strong>
+	          </div>
+	        `;
+	      }).join('');
+	      return `
+	        <form id="shipping-form" class="checkout-form">
+	          <div class="checkout-summary">
+	            <p class="eyebrow">Resumen</p>
+	            <h3>Tu pedido</h3>
+	            <div class="summary-list">${rows}</div>
+	            <div class="summary-total"><span>Total</span><strong>${money(total)}</strong></div>
+	          </div>
+	          <div class="shipping-fields">
+	            <p class="eyebrow">Envio</p>
+	            <h3>Datos de entrega</h3>
+	            <label>
+	              <span>Nombre completo</span>
+	              <input name="shippingName" autocomplete="name" required>
+	            </label>
+	            <label>
+	              <span>Email</span>
+	              <input name="shippingEmail" type="email" autocomplete="email" required>
+	            </label>
+	            <label>
+	              <span>Telefono</span>
+	              <input name="shippingPhone" autocomplete="tel" required>
+	            </label>
+	            <label>
+	              <span>Direccion</span>
+	              <input name="shippingAddress" autocomplete="street-address" required>
+	            </label>
+	            <label>
+	              <span>Ciudad</span>
+	              <input name="shippingCity" autocomplete="address-level2" required>
+	            </label>
+	            <label>
+	              <span>Notas de entrega</span>
+	              <textarea name="shippingNotes" rows="3"></textarea>
+	            </label>
+	            <div class="modal-actions">
+	              <button id="submit-shipping" class="btn primary" type="submit">Confirmar pedido</button>
+	              <button id="modal-cancel" class="btn ghost" type="button">Cancelar</button>
+	            </div>
+	          </div>
+	        </form>
+	      `;
+	    }
+
+	    function showCheckout(){
+	      const token = getToken();
+	      if (!token) return showLogin();
+	      if (!window._cartItems || !window._cartItems.length) {
+	        showToast('Tu carrito esta vacio', 'info');
+	        return;
+	      }
+	      openModal(checkoutForm(window._cartItems), 'wide');
+	    }
+
+	    function orderConfirmation(order){
+	      const items = order.items || [];
+	      const rows = items.map(item => `
+	        <div class="confirm-item">
+	          <img src="${escapeHtml(item.productImage || fallbackImage(item.ProductId))}" alt="${escapeHtml(item.productName)}">
+	          <div>
+	            <strong>${escapeHtml(item.productName)}</strong>
+	            <span>Cantidad ${Number(item.quantity || 0)} - ${money(item.unitPrice)}</span>
+	          </div>
+	          <strong>${money(item.subtotal)}</strong>
+	        </div>
+	      `).join('');
+	      return `
+	        <div class="confirmation">
+	          <div class="confirm-head">
+	            <div class="confirm-mark">
+	              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>
+	            </div>
+	            <p class="eyebrow">Pedido confirmado</p>
+	            <h3>Orden #${order.id}</h3>
+	            <p>Referencia ${escapeHtml(order.paymentReference)}</p>
+	          </div>
+	          <div class="confirmation-grid">
+	            <section>
+	              <h4>Productos</h4>
+	              <div class="confirm-list">${rows}</div>
+	              <div class="summary-total"><span>Total pagado</span><strong>${money(order.total)}</strong></div>
+	            </section>
+	            <section>
+	              <h4>Entrega</h4>
+	              <div class="delivery-card">
+	                <strong>${escapeHtml(order.shippingName)}</strong>
+	                <span>${escapeHtml(order.shippingAddress)}</span>
+	                <span>${escapeHtml(order.shippingCity)}</span>
+	                <span>${escapeHtml(order.shippingPhone)}</span>
+	                <span>${escapeHtml(order.shippingEmail)}</span>
+	                ${order.shippingNotes ? `<span>${escapeHtml(order.shippingNotes)}</span>` : ''}
+	              </div>
+	              <div class="status-pill">Estado: ${escapeHtml(order.status)}</div>
+	            </section>
+	          </div>
+	          <div class="modal-actions">
+	            <button id="modal-cancel" class="btn primary">Volver a la tienda</button>
+	          </div>
+	        </div>
+	      `;
+	    }
 
     $(document).on('click', '#cart-toggle', openCart);
     $(document).on('click', '#close-cart, #cart-backdrop', closeCart);
     $(document).on('click', '#modal-close, #modal-cancel', closeModal);
-    $(document).on('click', '#show-login', showLogin);
-    $(document).on('click', '#show-register', showRegister);
+	    $(document).on('click', '#show-login', showLogin);
+	    $(document).on('click', '#show-register', showRegister);
+	    $(document).on('click', '.btn-preview, .product-preview-trigger', function(){
+	      showProductPreview($(this).data('id'));
+	    });
 
     $(document).on('keydown', function(e){
       if (e.key === 'Escape') {
@@ -335,26 +543,16 @@
       }
     });
 
-    $(document).on('click', '.btn-add', function(){
-      const id = $(this).data('id');
-      const token = getToken();
-      if (!token) {
-        showLogin();
-        showToast('Inicia sesion para agregar productos', 'info');
-        return;
-      }
-      const button = $(this).prop('disabled', true).text('Agregando');
-      $.ajax({ url: API + '/cart/add', method: 'POST', headers: { Authorization: 'Bearer ' + token }, contentType: 'application/json', data: JSON.stringify({ productId: id, quantity: 1 }) })
-        .done(resp => {
-          renderCartItems(normalizeCartResponse(resp));
-          showToast('Producto agregado al carrito');
-        })
-        .fail(xhr => {
-          if (xhr.status === 401) return handleAuthExpired();
-          showToast('No fue posible agregar el producto', 'error');
-        })
-        .always(() => button.prop('disabled', false).text('Agregar'));
-    });
+	    $(document).on('click', '.btn-add', function(){
+	      const id = $(this).data('id');
+	      addToCart(id, 1, $(this));
+	    });
+
+	    $(document).on('click', '.btn-add-preview', function(){
+	      const id = $(this).data('id');
+	      const quantity = Number($('#preview-qty').val() || 1);
+	      addToCart(id, quantity, $(this));
+	    });
 
     $(document).on('click', '.remove-item', function(){
       const productId = $(this).data('id');
@@ -407,22 +605,36 @@
       showToast('Sesion cerrada', 'info');
     });
 
-    $(document).on('click', '#checkout', function(){
-      const token = getToken();
-      if (!token) return showLogin();
-      const button = $(this).prop('disabled', true).text('Procesando');
-      $.ajax({ url: API + '/checkout', method: 'POST', headers: { Authorization: 'Bearer ' + token } })
-        .done(res => {
-          showToast(res.message || 'Pago simulado exitoso');
-          loadCart();
-          loadProducts();
-        })
-        .fail(xhr => {
-          if (xhr.status === 401) return handleAuthExpired();
-          showToast('No fue posible procesar el pago', 'error');
-        })
-        .always(() => button.prop('disabled', false).text('Pagar ahora'));
-    });
+	    $(document).on('click', '#checkout', function(){
+	      showCheckout();
+	    });
+
+	    $(document).on('submit', '#shipping-form', function(e){
+	      e.preventDefault();
+	      const token = getToken();
+	      if (!token) return showLogin();
+	      const data = Object.fromEntries(new FormData(this).entries());
+	      const button = $('#submit-shipping').prop('disabled', true).text('Confirmando');
+	      $.ajax({
+	        url: API + '/checkout',
+	        method: 'POST',
+	        headers: { Authorization: 'Bearer ' + token },
+	        contentType: 'application/json',
+	        data: JSON.stringify(data)
+	      })
+	        .done(res => {
+	          showToast(res.message || 'Pedido confirmado');
+	          closeCart();
+	          loadCart();
+	          loadProducts();
+	          openModal(orderConfirmation(res.order), 'confirm');
+	        })
+	        .fail(xhr => {
+	          if (xhr.status === 401) return handleAuthExpired();
+	          showToast((xhr.responseJSON && xhr.responseJSON.error) || 'No fue posible confirmar el pedido', 'error');
+	        })
+	        .always(() => button.prop('disabled', false).text('Confirmar pedido'));
+	    });
 
     let searchTimer;
     $(document).on('input', '#search-input', function(){
