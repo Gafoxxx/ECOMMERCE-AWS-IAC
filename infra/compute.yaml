@@ -24,6 +24,24 @@ Parameters:
     NoEcho: true
     MinLength: 16
     Description: "Secreto para firmar los tokens JWT de la aplicacion"
+  AppBaseUrl:
+    Type: String
+    Default: "http://localhost:3000"
+    Description: "URL publica base de la aplicacion para retornos de Mercado Pago"
+  MercadoPagoAccessToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Access token de Mercado Pago Checkout Pro"
+  MercadoPagoPublicKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Public key de Mercado Pago Checkout Pro"
+  MercadoPagoWebhookUrl:
+    Type: String
+    Default: ""
+    Description: "URL HTTPS opcional para Webhooks de Mercado Pago"
 
 Resources:
   # 1. Grupos de Seguridad
@@ -115,6 +133,10 @@ Resources:
             DB_PASSWORD=${DBPassword}
             DB_HOST=${DBHost}
             JWT_SECRET=${JWTSecret}
+            APP_BASE_URL=${AppBaseUrl}
+            MERCADOPAGO_ACCESS_TOKEN=${MercadoPagoAccessToken}
+            MERCADOPAGO_PUBLIC_KEY=${MercadoPagoPublicKey}
+            MERCADOPAGO_WEBHOOK_URL=${MercadoPagoWebhookUrl}
             PORT=3000
             EOT
 
@@ -128,6 +150,10 @@ Resources:
             DBUser: !ImportValue Ecommerce-DB-Username
             DBPassword: !Ref DBPassword
             JWTSecret: !Ref JWTSecret
+            AppBaseUrl: !Ref AppBaseUrl
+            MercadoPagoAccessToken: !Ref MercadoPagoAccessToken
+            MercadoPagoPublicKey: !Ref MercadoPagoPublicKey
+            MercadoPagoWebhookUrl: !Ref MercadoPagoWebhookUrl
             GitHubRepoUrl: !Ref GitHubRepoUrl
             GitHubBranch: !Ref GitHubBranch
 

@@ -15,6 +15,7 @@ const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
 const cartRoutes = require('./routes/cart');
 const checkoutRoutes = require('./routes/checkout');
+const paymentRoutes = require('./routes/payments');
 const uploadRoutes = require('./routes/upload');
 
 const app = express();
@@ -50,9 +51,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/checkout', checkoutRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/upload', uploadRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+app.get(['/payment/success', '/payment/failure', '/payment/pending'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 const PORT = process.env.PORT || 3000;
 

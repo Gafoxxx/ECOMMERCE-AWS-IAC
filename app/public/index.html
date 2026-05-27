@@ -461,7 +461,7 @@
 	              <textarea name="shippingNotes" rows="3"></textarea>
 	            </label>
 	            <div class="modal-actions">
-	              <button id="submit-shipping" class="btn primary" type="submit">Confirmar pedido</button>
+	              <button id="submit-shipping" class="btn primary" type="submit">Pagar con Mercado Pago</button>
 	              <button id="modal-cancel" class="btn ghost" type="button">Cancelar</button>
 	            </div>
 	          </div>
@@ -481,6 +481,12 @@
 
 	    function orderConfirmation(order){
 	      const items = order.items || [];
+	      const statusInfo = {
+	        paid: { title: 'Pedido confirmado', text: 'Pago aprobado' },
+	        pending: { title: 'Pago pendiente', text: 'Estamos esperando la confirmacion del pago' },
+	        failed: { title: 'Pago no aprobado', text: 'No fue posible aprobar el pago' },
+	        refunded: { title: 'Pago reembolsado', text: 'El pago fue reembolsado' }
+	      }[order.status] || { title: 'Estado del pedido', text: order.status || 'Pendiente' };
 	      const rows = items.map(item => `
 	        <div class="confirm-item">
 	          <img src="${escapeHtml(item.productImage || fallbackImage(item.ProductId))}" alt="${escapeHtml(item.productName)}">
@@ -497,7 +503,7 @@
 	            <div class="confirm-mark">
 	              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>
 	            </div>
-	            <p class="eyebrow">Pedido confirmado</p>
+	            <p class="eyebrow">${statusInfo.text}</p>
 	            <h3>Orden #${order.id}</h3>
 	            <p>Referencia ${escapeHtml(order.paymentReference)}</p>
 	          </div>
@@ -525,6 +531,60 @@
 	          </div>
 	        </div>
 	      `;
+	    }
+
+	    function handlePaymentReturn(){
+	      if (!location.pathname.startsWith('/payment/')) return;
+	      const token = getToken();
+	      const params = new URLSearchParams(location.search);
+	      const result = location.pathname.split('/').pop();
+	      const title = {
+	        success: 'Validando pago...',
+	        pending: 'Consultando pago pendiente...',
+	        failure: 'Consultando pago...'
+	      }[result] || 'Consultando pago...';
+
+	      openModal(`
+	        <div class="confirmation">
+	          <div class="confirm-head">
+	            <p class="eyebrow">Mercado Pago</p>
+	            <h3>${title}</h3>
+	            <p>Un momento mientras actualizamos tu pedido.</p>
+	          </div>
+	        </div>
+	      `, 'confirm');
+
+	      if (!token) {
+	        showToast('Inicia sesion para consultar tu pedido', 'info');
+	        showLogin();
+	        return;
+	      }
+
+	      $.ajax({
+	        url: API + '/payments/status?' + params.toString(),
+	        headers: { Authorization: 'Bearer ' + token }
+	      })
+	        .done(res => {
+	          openModal(orderConfirmation(res.order), 'confirm');
+	          loadCart();
+	          loadProducts();
+	          history.replaceState({}, document.title, '/');
+	        })
+	        .fail(xhr => {
+	          if (xhr.status === 401) return handleAuthExpired();
+	          openModal(`
+	            <div class="confirmation">
+	              <div class="confirm-head">
+	                <p class="eyebrow">Mercado Pago</p>
+	                <h3>No pudimos validar el pago</h3>
+	                <p>Revisa tu cuenta de Mercado Pago o intenta nuevamente desde el carrito.</p>
+	              </div>
+	              <div class="modal-actions">
+	                <button id="modal-cancel" class="btn primary">Volver a la tienda</button>
+	              </div>
+	            </div>
+	          `, 'confirm');
+	        });
 	    }
 
     $(document).on('click', '#cart-toggle', openCart);
@@ -614,26 +674,27 @@
 	      const token = getToken();
 	      if (!token) return showLogin();
 	      const data = Object.fromEntries(new FormData(this).entries());
-	      const button = $('#submit-shipping').prop('disabled', true).text('Confirmando');
+	      const button = $('#submit-shipping').prop('disabled', true).text('Conectando');
 	      $.ajax({
-	        url: API + '/checkout',
+	        url: API + '/payments/create-preference',
 	        method: 'POST',
 	        headers: { Authorization: 'Bearer ' + token },
 	        contentType: 'application/json',
 	        data: JSON.stringify(data)
 	      })
 	        .done(res => {
-	          showToast(res.message || 'Pedido confirmado');
-	          closeCart();
-	          loadCart();
-	          loadProducts();
-	          openModal(orderConfirmation(res.order), 'confirm');
+	          if (!res.initPoint) {
+	            showToast('Mercado Pago no retorno URL de pago', 'error');
+	            return;
+	          }
+	          showToast('Redirigiendo a Mercado Pago', 'info');
+	          window.location.href = res.initPoint;
 	        })
 	        .fail(xhr => {
 	          if (xhr.status === 401) return handleAuthExpired();
-	          showToast((xhr.responseJSON && xhr.responseJSON.error) || 'No fue posible confirmar el pedido', 'error');
+	          showToast((xhr.responseJSON && xhr.responseJSON.error) || 'No fue posible iniciar el pago', 'error');
 	        })
-	        .always(() => button.prop('disabled', false).text('Confirmar pedido'));
+	        .always(() => button.prop('disabled', false).text('Pagar con Mercado Pago'));
 	    });
 
     let searchTimer;
@@ -650,11 +711,12 @@
       }, 160);
     });
 
-    $(document).ready(function(){
-      setAuthUI();
-      loadProducts();
-      loadCart();
-    });
+	    $(document).ready(function(){
+	      setAuthUI();
+	      loadProducts();
+	      loadCart();
+	      handlePaymentReturn();
+	    });
   </script>
 </body>
 </html>
