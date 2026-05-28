@@ -98,6 +98,11 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 2
+      Targets:
+        - Id: !Ref WebAppInstance1
+          Port: 3000
+        - Id: !Ref WebAppInstance2
+          Port: 3000
 
   # 3. Application Load Balancer (ALB)
   WebAppALB:
@@ -284,20 +289,6 @@ Resources:
           Value: Ecommerce-EC2-Instance-2
         - Key: Project
           Value: Ecommerce-AWS-IAC
-
-  WebAppTargetAttachment1:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroupAttachment
-    Properties:
-      TargetGroupArn: !Ref WebAppTargetGroup
-      TargetId: !Ref WebAppInstance1
-      Port: 3000
-
-  WebAppTargetAttachment2:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroupAttachment
-    Properties:
-      TargetGroupArn: !Ref WebAppTargetGroup
-      TargetId: !Ref WebAppInstance2
-      Port: 3000
 
 Outputs:
   ALBUrl:
