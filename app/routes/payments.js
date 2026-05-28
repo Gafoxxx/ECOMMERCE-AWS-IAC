@@ -126,7 +126,6 @@ function preferencePayload(order, orderItems, shipping) {
       failure: `${baseUrl}/payment/failure`,
       pending: `${baseUrl}/payment/pending`
     },
-    auto_return: 'approved',
     external_reference: order.externalReference,
     statement_descriptor: 'ECOMMERCE',
     metadata: {
@@ -138,6 +137,10 @@ function preferencePayload(order, orderItems, shipping) {
 
   if (notificationUrl) {
     payload.notification_url = notificationUrl;
+  }
+
+  if (baseUrl.startsWith('https://')) {
+    payload.auto_return = 'approved';
   }
 
   return payload;
