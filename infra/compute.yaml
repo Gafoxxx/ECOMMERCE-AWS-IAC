@@ -156,116 +156,148 @@ Resources:
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
 
-  # 5. Launch Template para las instancias de aplicacion
-  WebAppLaunchTemplate:
-    Type: AWS::EC2::LaunchTemplate
+  # 5. Instancias EC2 directas para compatibilidad con sandboxes sin Auto Scaling
+  WebAppInstance1:
+    Type: AWS::EC2::Instance
     Properties:
-      LaunchTemplateData:
-        ImageId: !Ref LatestAmiId
-        InstanceType: t2.micro
-        SecurityGroupIds:
-          - !ImportValue Ecommerce-App-SG-ID
-        UserData:
-          Fn::Base64: !Sub
-            - |
-              #!/bin/bash
-              yum update -y
-              # Instalar Node.js y Git
-              curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-              yum install -y nodejs git
-              npm install -g pm2
+      ImageId: !Ref LatestAmiId
+      InstanceType: t2.micro
+      SubnetId: !Select [ 0, !Split [ ",", !ImportValue Ecommerce-Private-Subnets ] ]
+      SecurityGroupIds:
+        - !ImportValue Ecommerce-App-SG-ID
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            yum update -y
+            # Instalar Node.js y Git
+            curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+            yum install -y nodejs git
+            npm install -g pm2
 
-              # Moverse al directorio del usuario y clonar repo
-              cd /home/ec2-user
-              git clone --branch ${GitHubBranch} --single-branch ${GitHubRepoUrl} repo
-              cd repo/app
+            # Moverse al directorio del usuario y clonar repo
+            cd /home/ec2-user
+            git clone --branch ${GitHubBranch} --single-branch ${GitHubRepoUrl} repo
+            cd repo/app
 
-              # Crear variables de entorno dinamicamente
-              cat <<EOT >> .env
-              DB_NAME=${DBName}
-              DB_USER=${DBUser}
-              DB_PASSWORD=${DBPassword}
-              DB_HOST=${DBHost}
-              JWT_SECRET=${JWTSecret}
-              APP_BASE_URL=${AppBaseUrlValue}
-              MERCADOPAGO_ACCESS_TOKEN=${MercadoPagoAccessToken}
-              MERCADOPAGO_PUBLIC_KEY=${MercadoPagoPublicKey}
-              MERCADOPAGO_WEBHOOK_URL=${MercadoPagoWebhookUrl}
-              PAYMENT_DEBUG_ERRORS=${PaymentDebugErrors}
-              PORT=3000
-              EOT
+            # Crear variables de entorno dinamicamente
+            cat <<EOT >> .env
+            DB_NAME=${DBName}
+            DB_USER=${DBUser}
+            DB_PASSWORD=${DBPassword}
+            DB_HOST=${DBHost}
+            JWT_SECRET=${JWTSecret}
+            APP_BASE_URL=${AppBaseUrlValue}
+            MERCADOPAGO_ACCESS_TOKEN=${MercadoPagoAccessToken}
+            MERCADOPAGO_PUBLIC_KEY=${MercadoPagoPublicKey}
+            MERCADOPAGO_WEBHOOK_URL=${MercadoPagoWebhookUrl}
+            PAYMENT_DEBUG_ERRORS=${PaymentDebugErrors}
+            PORT=3000
+            EOT
 
-              # Instalar dependencias y arrancar
-              npm install
-              pm2 start index.js
-              pm2 save
-              pm2 startup
-            - DBHost: !ImportValue Ecommerce-DB-Endpoint
-              DBName: !ImportValue Ecommerce-DB-Name
-              DBUser: !ImportValue Ecommerce-DB-Username
-              DBPassword: !Ref DBPassword
-              JWTSecret: !Ref JWTSecret
-              AppBaseUrlValue: !If
-                - UseCloudFrontBaseUrlCondition
-                - !Join [ "", [ "https://", !GetAtt WebAppCloudFrontDistribution.DomainName ] ]
-                - !Ref AppBaseUrl
-              MercadoPagoAccessToken: !Ref MercadoPagoAccessToken
-              MercadoPagoPublicKey: !Ref MercadoPagoPublicKey
-              MercadoPagoWebhookUrl: !Ref MercadoPagoWebhookUrl
-              PaymentDebugErrors: !Ref PaymentDebugErrors
-              GitHubRepoUrl: !Ref GitHubRepoUrl
-              GitHubBranch: !Ref GitHubBranch
-
-  # 6. Auto Scaling Group (ASG)
-  WebAppASG:
-    Type: AWS::AutoScaling::AutoScalingGroup
-    Properties:
-      AutoScalingGroupName: Ecommerce-ASG
-      VPCZoneIdentifier: !Split [ ",", !ImportValue Ecommerce-Private-Subnets ]
-      LaunchTemplate:
-        LaunchTemplateId: !Ref WebAppLaunchTemplate
-        Version: !GetAtt WebAppLaunchTemplate.LatestVersionNumber
-      MinSize: '2'
-      MaxSize: '6'
-      DesiredCapacity: '2'
-      HealthCheckType: ELB
-      HealthCheckGracePeriod: 300
-      TargetGroupARNs:
-        - !Ref WebAppTargetGroup
+            # Instalar dependencias y arrancar
+            npm install
+            pm2 start index.js
+            pm2 save
+            pm2 startup
+          - DBHost: !ImportValue Ecommerce-DB-Endpoint
+            DBName: !ImportValue Ecommerce-DB-Name
+            DBUser: !ImportValue Ecommerce-DB-Username
+            DBPassword: !Ref DBPassword
+            JWTSecret: !Ref JWTSecret
+            AppBaseUrlValue: !If
+              - UseCloudFrontBaseUrlCondition
+              - !Join [ "", [ "https://", !GetAtt WebAppCloudFrontDistribution.DomainName ] ]
+              - !Ref AppBaseUrl
+            MercadoPagoAccessToken: !Ref MercadoPagoAccessToken
+            MercadoPagoPublicKey: !Ref MercadoPagoPublicKey
+            MercadoPagoWebhookUrl: !Ref MercadoPagoWebhookUrl
+            PaymentDebugErrors: !Ref PaymentDebugErrors
+            GitHubRepoUrl: !Ref GitHubRepoUrl
+            GitHubBranch: !Ref GitHubBranch
       Tags:
         - Key: Name
-          Value: Ecommerce-EC2-Instance
-          PropagateAtLaunch: true
+          Value: Ecommerce-EC2-Instance-1
         - Key: Project
           Value: Ecommerce-AWS-IAC
-          PropagateAtLaunch: true
 
-  WebAppScalingPolicy:
-    Type: AWS::AutoScaling::ScalingPolicy
+  WebAppInstance2:
+    Type: AWS::EC2::Instance
     Properties:
-      AutoScalingGroupName: !Ref WebAppASG
-      PolicyType: TargetTrackingScaling
-      TargetTrackingConfiguration:
-        PredefinedMetricSpecification:
-          PredefinedMetricType: ASGAverageCPUUtilization
-        TargetValue: 60
+      ImageId: !Ref LatestAmiId
+      InstanceType: t2.micro
+      SubnetId: !Select [ 1, !Split [ ",", !ImportValue Ecommerce-Private-Subnets ] ]
+      SecurityGroupIds:
+        - !ImportValue Ecommerce-App-SG-ID
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            yum update -y
+            # Instalar Node.js y Git
+            curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+            yum install -y nodejs git
+            npm install -g pm2
 
-  WebAppCPUAlarm:
-    Type: AWS::CloudWatch::Alarm
+            # Moverse al directorio del usuario y clonar repo
+            cd /home/ec2-user
+            git clone --branch ${GitHubBranch} --single-branch ${GitHubRepoUrl} repo
+            cd repo/app
+
+            # Crear variables de entorno dinamicamente
+            cat <<EOT >> .env
+            DB_NAME=${DBName}
+            DB_USER=${DBUser}
+            DB_PASSWORD=${DBPassword}
+            DB_HOST=${DBHost}
+            JWT_SECRET=${JWTSecret}
+            APP_BASE_URL=${AppBaseUrlValue}
+            MERCADOPAGO_ACCESS_TOKEN=${MercadoPagoAccessToken}
+            MERCADOPAGO_PUBLIC_KEY=${MercadoPagoPublicKey}
+            MERCADOPAGO_WEBHOOK_URL=${MercadoPagoWebhookUrl}
+            PAYMENT_DEBUG_ERRORS=${PaymentDebugErrors}
+            PORT=3000
+            EOT
+
+            # Instalar dependencias y arrancar
+            npm install
+            pm2 start index.js
+            pm2 save
+            pm2 startup
+          - DBHost: !ImportValue Ecommerce-DB-Endpoint
+            DBName: !ImportValue Ecommerce-DB-Name
+            DBUser: !ImportValue Ecommerce-DB-Username
+            DBPassword: !Ref DBPassword
+            JWTSecret: !Ref JWTSecret
+            AppBaseUrlValue: !If
+              - UseCloudFrontBaseUrlCondition
+              - !Join [ "", [ "https://", !GetAtt WebAppCloudFrontDistribution.DomainName ] ]
+              - !Ref AppBaseUrl
+            MercadoPagoAccessToken: !Ref MercadoPagoAccessToken
+            MercadoPagoPublicKey: !Ref MercadoPagoPublicKey
+            MercadoPagoWebhookUrl: !Ref MercadoPagoWebhookUrl
+            PaymentDebugErrors: !Ref PaymentDebugErrors
+            GitHubRepoUrl: !Ref GitHubRepoUrl
+            GitHubBranch: !Ref GitHubBranch
+      Tags:
+        - Key: Name
+          Value: Ecommerce-EC2-Instance-2
+        - Key: Project
+          Value: Ecommerce-AWS-IAC
+
+  WebAppTargetAttachment1:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroupAttachment
     Properties:
-      AlarmName: Ecommerce-ASG-CPU-Scaling-Watch
-      AlarmDescription: Observa la CPU promedio usada por la politica de auto escalado.
-      Namespace: AWS/EC2
-      MetricName: CPUUtilization
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 60
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
-      Dimensions:
-        - Name: AutoScalingGroupName
-          Value: !Ref WebAppASG
+      TargetGroupArn: !Ref WebAppTargetGroup
+      TargetId: !Ref WebAppInstance1
+      Port: 3000
+
+  WebAppTargetAttachment2:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroupAttachment
+    Properties:
+      TargetGroupArn: !Ref WebAppTargetGroup
+      TargetId: !Ref WebAppInstance2
+      Port: 3000
 
 Outputs:
   ALBUrl:
@@ -302,7 +334,7 @@ Outputs:
     Export:
       Name: Ecommerce-TG-FullName
   AutoScalingGroupName:
-    Description: "Nombre del Auto Scaling Group de la aplicacion"
-    Value: !Ref WebAppASG
+    Description: "Auto Scaling deshabilitado por restricciones del sandbox"
+    Value: "AutoScaling disabled in this sandbox"
     Export:
       Name: Ecommerce-ASG-Name

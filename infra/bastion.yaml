@@ -32,42 +32,32 @@ Resources:
         - Key: Project
           Value: Ecommerce-AWS-IAC
 
-  BastionLaunchTemplate:
-    Type: AWS::EC2::LaunchTemplate
+  BastionInstance:
+    Type: AWS::EC2::Instance
     Properties:
-      LaunchTemplateData:
-        ImageId: !Ref LatestAmiId
-        InstanceType: t2.micro
-        KeyName: !Ref KeyName
-        SecurityGroupIds:
-          - !Ref BastionSecurityGroup
-
-  BastionAutoScalingGroup:
-    Type: AWS::AutoScaling::AutoScalingGroup
-    Properties:
-      AutoScalingGroupName: Ecommerce-Bastion-ASG
-      VPCZoneIdentifier:
-        - !Select [ 0, !Split [ ",", !ImportValue Ecommerce-Public-Subnets ] ]
-      LaunchTemplate:
-        LaunchTemplateId: !Ref BastionLaunchTemplate
-        Version: !GetAtt BastionLaunchTemplate.LatestVersionNumber
-      MinSize: '1'
-      MaxSize: '1'
-      DesiredCapacity: '1'
+      ImageId: !Ref LatestAmiId
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      SubnetId: !Select [ 0, !Split [ ",", !ImportValue Ecommerce-Public-Subnets ] ]
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
       Tags:
         - Key: Name
           Value: Ecommerce-Bastion
-          PropagateAtLaunch: true
         - Key: Project
           Value: Ecommerce-AWS-IAC
-          PropagateAtLaunch: true
 
 Outputs:
-  BastionAutoScalingGroupName:
-    Description: Nombre del Auto Scaling Group que mantiene una instancia Bastion
-    Value: !Ref BastionAutoScalingGroup
+  BastionInstanceId:
+    Description: ID de la instancia Bastion
+    Value: !Ref BastionInstance
     Export:
-      Name: Ecommerce-Bastion-ASG-Name
+      Name: Ecommerce-Bastion-Instance-ID
+  BastionPublicIp:
+    Description: IP publica del Bastion Host
+    Value: !GetAtt BastionInstance.PublicIp
+    Export:
+      Name: Ecommerce-Bastion-Public-IP
   BastionSecurityGroupId:
     Description: Security Group del Bastion Host
     Value: !GetAtt BastionSecurityGroup.GroupId
