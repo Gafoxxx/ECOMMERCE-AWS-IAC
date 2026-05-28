@@ -42,6 +42,13 @@ Parameters:
     Type: String
     Default: ""
     Description: "URL HTTPS opcional para Webhooks de Mercado Pago"
+  PaymentDebugErrors:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Devuelve detalles sanitizados de errores de Mercado Pago para diagnostico temporal"
 
 Resources:
   # 1. Grupos de Seguridad
@@ -137,6 +144,7 @@ Resources:
             MERCADOPAGO_ACCESS_TOKEN=${MercadoPagoAccessToken}
             MERCADOPAGO_PUBLIC_KEY=${MercadoPagoPublicKey}
             MERCADOPAGO_WEBHOOK_URL=${MercadoPagoWebhookUrl}
+            PAYMENT_DEBUG_ERRORS=${PaymentDebugErrors}
             PORT=3000
             EOT
 
@@ -154,6 +162,7 @@ Resources:
             MercadoPagoAccessToken: !Ref MercadoPagoAccessToken
             MercadoPagoPublicKey: !Ref MercadoPagoPublicKey
             MercadoPagoWebhookUrl: !Ref MercadoPagoWebhookUrl
+            PaymentDebugErrors: !Ref PaymentDebugErrors
             GitHubRepoUrl: !Ref GitHubRepoUrl
             GitHubBranch: !Ref GitHubBranch
 

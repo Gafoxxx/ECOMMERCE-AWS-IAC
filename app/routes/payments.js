@@ -21,6 +21,18 @@ function accessToken() {
   return clean(process.env.MERCADOPAGO_ACCESS_TOKEN);
 }
 
+function paymentDebugEnabled() {
+  return ['1', 'true', 'yes'].includes(clean(process.env.PAYMENT_DEBUG_ERRORS).toLowerCase());
+}
+
+function safeErrorDetail(detail) {
+  if (!detail || typeof detail !== 'object') return detail || 'Error sin detalle';
+  return JSON.parse(JSON.stringify(detail, (key, value) => {
+    if (/token|authorization|secret|password/i.test(key)) return '[redacted]';
+    return value;
+  }));
+}
+
 function requireMercadoPagoConfig(res) {
   if (!accessToken()) {
     res.status(500).json({ error: 'Falta configurar MERCADOPAGO_ACCESS_TOKEN' });
@@ -238,7 +250,11 @@ router.post('/create-preference', auth, async (req, res) => {
     });
   } catch (err) {
     console.error('Mercado Pago create preference error:', err.details || err);
-    res.status(err.status || 500).json({ error: 'No fue posible iniciar el pago con Mercado Pago' });
+    const payload = { error: 'No fue posible iniciar el pago con Mercado Pago' };
+    if (paymentDebugEnabled()) {
+      payload.detail = safeErrorDetail(err.details || err.message || err);
+    }
+    res.status(err.status || 500).json(payload);
   }
 });
 
