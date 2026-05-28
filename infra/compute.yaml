@@ -27,7 +27,14 @@ Parameters:
   AppBaseUrl:
     Type: String
     Default: "http://localhost:3000"
-    Description: "URL publica base de la aplicacion para retornos de Mercado Pago"
+    Description: "URL publica base alternativa. Solo se usa si UseCloudFrontBaseUrl=false"
+  UseCloudFrontBaseUrl:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Usa automaticamente la URL HTTPS de CloudFront como APP_BASE_URL"
   MercadoPagoAccessToken:
     Type: String
     NoEcho: true
@@ -49,6 +56,9 @@ Parameters:
       - "true"
       - "false"
     Description: "Devuelve detalles sanitizados de errores de Mercado Pago para diagnostico temporal"
+
+Conditions:
+  UseCloudFrontBaseUrlCondition: !Equals [ !Ref UseCloudFrontBaseUrl, "true" ]
 
 Resources:
   # 1. Grupos de Seguridad
@@ -110,61 +120,101 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref WebAppTargetGroup
 
-  # 5. Launch Configuration (receta compatible con sandboxes academicos)
-  WebAppLaunchConfiguration:
-    Type: AWS::AutoScaling::LaunchConfiguration
+  WebAppCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
     Properties:
-      ImageId: !Ref LatestAmiId
-      InstanceType: t2.micro
-      SecurityGroups:
-        - !ImportValue Ecommerce-App-SG-ID
-      UserData:
-        Fn::Base64: !Sub
-          - |
-            #!/bin/bash
-            yum update -y
-            # Instalar Node.js y Git
-            curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-            yum install -y nodejs git
-            npm install -g pm2
+      DistributionConfig:
+        Comment: "HTTPS endpoint for Ecommerce ALB"
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+        IPV6Enabled: true
+        Origins:
+          - Id: EcommerceALBOrigin
+            DomainName: !GetAtt WebAppALB.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+        DefaultCacheBehavior:
+          TargetOriginId: EcommerceALBOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
+          Compress: false
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
 
-            # Moverse al directorio del usuario y clonar repo
-            cd /home/ec2-user
-            git clone --branch ${GitHubBranch} --single-branch ${GitHubRepoUrl} repo
-            cd repo/app
+  # 5. Launch Template para las instancias de aplicacion
+  WebAppLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        ImageId: !Ref LatestAmiId
+        InstanceType: t2.micro
+        SecurityGroupIds:
+          - !ImportValue Ecommerce-App-SG-ID
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              #!/bin/bash
+              yum update -y
+              # Instalar Node.js y Git
+              curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+              yum install -y nodejs git
+              npm install -g pm2
 
-            # Crear variables de entorno dinamicamente
-            cat <<EOT >> .env
-            DB_NAME=${DBName}
-            DB_USER=${DBUser}
-            DB_PASSWORD=${DBPassword}
-            DB_HOST=${DBHost}
-            JWT_SECRET=${JWTSecret}
-            APP_BASE_URL=${AppBaseUrl}
-            MERCADOPAGO_ACCESS_TOKEN=${MercadoPagoAccessToken}
-            MERCADOPAGO_PUBLIC_KEY=${MercadoPagoPublicKey}
-            MERCADOPAGO_WEBHOOK_URL=${MercadoPagoWebhookUrl}
-            PAYMENT_DEBUG_ERRORS=${PaymentDebugErrors}
-            PORT=3000
-            EOT
+              # Moverse al directorio del usuario y clonar repo
+              cd /home/ec2-user
+              git clone --branch ${GitHubBranch} --single-branch ${GitHubRepoUrl} repo
+              cd repo/app
 
-            # Instalar dependencias y arrancar
-            npm install
-            pm2 start index.js
-            pm2 save
-            pm2 startup
-          - DBHost: !ImportValue Ecommerce-DB-Endpoint
-            DBName: !ImportValue Ecommerce-DB-Name
-            DBUser: !ImportValue Ecommerce-DB-Username
-            DBPassword: !Ref DBPassword
-            JWTSecret: !Ref JWTSecret
-            AppBaseUrl: !Ref AppBaseUrl
-            MercadoPagoAccessToken: !Ref MercadoPagoAccessToken
-            MercadoPagoPublicKey: !Ref MercadoPagoPublicKey
-            MercadoPagoWebhookUrl: !Ref MercadoPagoWebhookUrl
-            PaymentDebugErrors: !Ref PaymentDebugErrors
-            GitHubRepoUrl: !Ref GitHubRepoUrl
-            GitHubBranch: !Ref GitHubBranch
+              # Crear variables de entorno dinamicamente
+              cat <<EOT >> .env
+              DB_NAME=${DBName}
+              DB_USER=${DBUser}
+              DB_PASSWORD=${DBPassword}
+              DB_HOST=${DBHost}
+              JWT_SECRET=${JWTSecret}
+              APP_BASE_URL=${AppBaseUrlValue}
+              MERCADOPAGO_ACCESS_TOKEN=${MercadoPagoAccessToken}
+              MERCADOPAGO_PUBLIC_KEY=${MercadoPagoPublicKey}
+              MERCADOPAGO_WEBHOOK_URL=${MercadoPagoWebhookUrl}
+              PAYMENT_DEBUG_ERRORS=${PaymentDebugErrors}
+              PORT=3000
+              EOT
+
+              # Instalar dependencias y arrancar
+              npm install
+              pm2 start index.js
+              pm2 save
+              pm2 startup
+            - DBHost: !ImportValue Ecommerce-DB-Endpoint
+              DBName: !ImportValue Ecommerce-DB-Name
+              DBUser: !ImportValue Ecommerce-DB-Username
+              DBPassword: !Ref DBPassword
+              JWTSecret: !Ref JWTSecret
+              AppBaseUrlValue: !If
+                - UseCloudFrontBaseUrlCondition
+                - !Join [ "", [ "https://", !GetAtt WebAppCloudFrontDistribution.DomainName ] ]
+                - !Ref AppBaseUrl
+              MercadoPagoAccessToken: !Ref MercadoPagoAccessToken
+              MercadoPagoPublicKey: !Ref MercadoPagoPublicKey
+              MercadoPagoWebhookUrl: !Ref MercadoPagoWebhookUrl
+              PaymentDebugErrors: !Ref PaymentDebugErrors
+              GitHubRepoUrl: !Ref GitHubRepoUrl
+              GitHubBranch: !Ref GitHubBranch
 
   # 6. Auto Scaling Group (ASG)
   WebAppASG:
@@ -172,7 +222,9 @@ Resources:
     Properties:
       AutoScalingGroupName: Ecommerce-ASG
       VPCZoneIdentifier: !Split [ ",", !ImportValue Ecommerce-Private-Subnets ]
-      LaunchConfigurationName: !Ref WebAppLaunchConfiguration
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WebAppLaunchTemplate
+        Version: !GetAtt WebAppLaunchTemplate.LatestVersionNumber
       MinSize: '2'
       MaxSize: '6'
       DesiredCapacity: '2'
@@ -221,6 +273,24 @@ Outputs:
     Value: !Join [ "", [ "http://", !GetAtt WebAppALB.DNSName ] ]
     Export:
       Name: Ecommerce-ALB-URL
+  CloudFrontUrl:
+    Description: "URL HTTPS publica de tu E-commerce via CloudFront"
+    Value: !Join [ "", [ "https://", !GetAtt WebAppCloudFrontDistribution.DomainName ] ]
+    Export:
+      Name: Ecommerce-CloudFront-URL
+  CloudFrontDistributionId:
+    Description: "ID de la distribucion CloudFront"
+    Value: !Ref WebAppCloudFrontDistribution
+    Export:
+      Name: Ecommerce-CloudFront-Distribution-ID
+  AppBaseUrlUsed:
+    Description: "APP_BASE_URL aplicado a las instancias nuevas"
+    Value: !If
+      - UseCloudFrontBaseUrlCondition
+      - !Join [ "", [ "https://", !GetAtt WebAppCloudFrontDistribution.DomainName ] ]
+      - !Ref AppBaseUrl
+    Export:
+      Name: Ecommerce-App-Base-URL
   ALBFullName:
     Description: "Nombre completo del ALB para metricas CloudWatch"
     Value: !GetAtt WebAppALB.LoadBalancerFullName

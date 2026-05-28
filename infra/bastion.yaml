@@ -32,14 +32,15 @@ Resources:
         - Key: Project
           Value: Ecommerce-AWS-IAC
 
-  BastionLaunchConfiguration:
-    Type: AWS::AutoScaling::LaunchConfiguration
+  BastionLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
     Properties:
-      ImageId: !Ref LatestAmiId
-      InstanceType: t2.micro
-      KeyName: !Ref KeyName
-      SecurityGroups:
-        - !Ref BastionSecurityGroup
+      LaunchTemplateData:
+        ImageId: !Ref LatestAmiId
+        InstanceType: t2.micro
+        KeyName: !Ref KeyName
+        SecurityGroupIds:
+          - !Ref BastionSecurityGroup
 
   BastionAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -47,7 +48,9 @@ Resources:
       AutoScalingGroupName: Ecommerce-Bastion-ASG
       VPCZoneIdentifier:
         - !Select [ 0, !Split [ ",", !ImportValue Ecommerce-Public-Subnets ] ]
-      LaunchConfigurationName: !Ref BastionLaunchConfiguration
+      LaunchTemplate:
+        LaunchTemplateId: !Ref BastionLaunchTemplate
+        Version: !GetAtt BastionLaunchTemplate.LatestVersionNumber
       MinSize: '1'
       MaxSize: '1'
       DesiredCapacity: '1'

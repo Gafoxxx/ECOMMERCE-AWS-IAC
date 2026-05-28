@@ -105,7 +105,8 @@ function buildOrderItems(items) {
 
 function preferencePayload(order, orderItems, shipping) {
   const baseUrl = appBaseUrl();
-  const notificationUrl = clean(process.env.MERCADOPAGO_WEBHOOK_URL);
+  const configuredNotificationUrl = clean(process.env.MERCADOPAGO_WEBHOOK_URL);
+  const notificationUrl = configuredNotificationUrl || (baseUrl.startsWith('https://') ? `${baseUrl}/api/payments/webhook` : '');
   const payload = {
     items: orderItems.map(item => ({
       id: String(item.ProductId),
