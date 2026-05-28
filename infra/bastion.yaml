@@ -41,6 +41,13 @@ Resources:
       SubnetId: !Select [ 0, !Split [ ",", !ImportValue Ecommerce-Public-Subnets ] ]
       SecurityGroupIds:
         - !Ref BastionSecurityGroup
+      PropagateTagsToVolumeOnCreation: true
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 8
+            VolumeType: gp2
+            DeleteOnTermination: true
       Tags:
         - Key: Name
           Value: Ecommerce-Bastion
