@@ -77,7 +77,7 @@ La guia completa esta en [docs/Guia_Despliegue_AWS.md](docs/Guia_Despliegue_AWS.
 
 El enunciado propone Auto Scaling, pero el sandbox de AWS Academy bloqueó `LaunchConfiguration` y `LaunchTemplate`. Por eso la version final usa dos EC2 privadas detras del ALB y deja Auto Scaling documentado como mejora para una cuenta AWS sin esa limitacion.
 
-
-Presentado por: Juan Felipe Garzón Trejos - Sebastián Botero
-Curso: Infraestructura III
-Docente: Ing. Mario German Castillo Ramirez
+##Créditos del desarrollo:
+- Presentado por: Juan Felipe Garzón Trejos - Sebastián Botero
+- Curso: Infraestructura III
+- Docente: Ing. Mario German Castillo Ramirez
