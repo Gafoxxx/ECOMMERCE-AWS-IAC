@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Fase 4: Computo, Auto Scaling y Application Load Balancer'
+Description: 'Fase 4: Computo privado, Application Load Balancer y CloudFront HTTPS'
 
 Parameters:
   LatestAmiId:
@@ -338,8 +338,18 @@ Outputs:
     Value: !GetAtt WebAppTargetGroup.TargetGroupFullName
     Export:
       Name: Ecommerce-TG-FullName
+  WebAppInstance1Id:
+    Description: "ID de la primera instancia privada de la aplicacion"
+    Value: !Ref WebAppInstance1
+    Export:
+      Name: Ecommerce-WebApp-Instance-1-ID
+  WebAppInstance2Id:
+    Description: "ID de la segunda instancia privada de la aplicacion"
+    Value: !Ref WebAppInstance2
+    Export:
+      Name: Ecommerce-WebApp-Instance-2-ID
   AutoScalingGroupName:
-    Description: "Auto Scaling deshabilitado por restricciones del sandbox"
+    Description: "Salida heredada: Auto Scaling deshabilitado por restricciones del sandbox"
     Value: "AutoScaling disabled in this sandbox"
     Export:
       Name: Ecommerce-ASG-Name

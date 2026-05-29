@@ -1,61 +1,116 @@
-Plan de Proyecto: Despliegue de Plataforma E-Commerce Escalable en AWS
-1. Introducción
-Este proyecto consiste en el diseño y despliegue de una infraestructura en la nube para una startup que lanza su primer producto: una plataforma de comercio electrónico. Se utilizará un enfoque de Infraestructura como Código (IaC) para garantizar un despliegue seguro, escalable y reproducible.
+# Plan de proyecto: E-commerce escalable en AWS con IaC
 
-2. Objetivos
-2.1 Objetivo General
-Desplegar una aplicación web escalable en AWS utilizando CloudFormation, integrando servicios de cómputo, base de datos y redes bajo mejores prácticas de arquitectura en la nube.
-2.2 Objetivos EspecíficosConsolidar los conocimientos en diseño de arquitecturas escalables y seguras.  Implementar la automatización de infraestructura mediante plantillas de CloudFormation.  Configurar mecanismos de alta disponibilidad y auto escalado para gestionar la demanda del tráfico.  Asegurar la persistencia de datos mediante el uso de servicios administrados de bases de datos (RDS). 
+## 1. Introduccion
 
-3. Alcance del ProyectoEl proyecto abarca tanto el desarrollo de las funcionalidades básicas de la aplicación como la configuración completa de la infraestructura de soporte: 
+El proyecto consiste en desplegar una plataforma de comercio electronico en AWS usando Infraestructura como Codigo con CloudFormation. La solucion cubre aplicacion web, base de datos, red, balanceo de carga, monitoreo y un flujo de pago de prueba mediante Mercado Pago Checkout Pro en sandbox.
 
- 3.1 Funcionalidades de la AplicaciónCatálogo de productos: 
+## 2. Objetivo general
 
- -Visualización de nombres, descripciones y precios.  
- -Carrito de compras: Gestión de productos y cálculo del total.  
- -Proceso de pago: Simulación de transacciones con un servicio ficticio.  
- -Registro de usuarios: Sistema de autenticación con usuario y contraseña.  
+Desplegar una aplicacion web segura, reproducible y escalable en AWS, integrando servicios de red, computo, base de datos, monitoreo y automatizacion.
 
- 3.2 Componentes de Infraestructura
+## 3. Objetivos especificos
 
- -Red virtual privada (VPC) con subredes públicas y privadas.  
+- Implementar una aplicacion e-commerce con catalogo, usuarios, carrito y checkout.
+- Usar RDS MySQL como base de datos administrada.
+- Definir la infraestructura completa con plantillas CloudFormation.
+- Separar recursos publicos y privados mediante VPC y subredes.
+- Publicar la aplicacion mediante ALB y HTTPS con CloudFront.
+- Configurar alertas con CloudWatch y SNS.
+- Documentar el despliegue y el cumplimiento de la rubrica.
 
- -Balanceador de carga (ALB) y grupos de Auto Scaling.  
+## 4. Alcance de la aplicacion
 
- -Instancia de base de datos relacional (RDS).  
+- Catalogo de productos con nombre, descripcion, precio, stock e imagenes.
+- Vista previa individual por producto.
+- Registro e inicio de sesion con JWT.
+- Carrito de compras con agregar, eliminar y total.
+- Formulario de datos de envio.
+- Integracion con Mercado Pago Checkout Pro en ambiente sandbox.
+- Pantalla de pedido con estado de pago, productos, total y datos de entrega.
 
- -Monitoreo proactivo y alertas mediante CloudWatch y SNS.
+## 5. Arquitectura cloud
 
- 4. Stack Tecnológico
+- VPC dedicada con DNS habilitado.
+- Dos subredes publicas para ALB y Bastion Host.
+- Dos subredes privadas para aplicacion y RDS.
+- Internet Gateway para subredes publicas.
+- NAT Gateway para que las instancias privadas descarguen dependencias.
+- Application Load Balancer publico.
+- CloudFront como endpoint HTTPS usando el certificado administrado de `cloudfront.net`.
+- Dos instancias EC2 privadas `t2.micro` ejecutando Node.js con PM2.
+- RDS MySQL `db.t3.micro` privado.
+- Bastion Host publico `t2.micro`.
+- CloudWatch alarms y SNS.
+- CloudTrail opcional segun permisos del sandbox.
 
-4.1 Desarrollo (App)
+## 6. Stack tecnologico
 
- -Front-end: HTML, CSS, JavaScript (jQuery).  
+### Aplicacion
 
- -Back-end: Node.js con el framework Express.js.  
+- Front-end: HTML, CSS, JavaScript y jQuery.
+- Back-end: Node.js con Express.js.
+- ORM: Sequelize.
+- Autenticacion: JWT y bcrypt.
+- Pagos: Mercado Pago Checkout Pro en sandbox.
 
- -ORM: Sequelize para la interacción con la base de datos.  
+### Infraestructura
 
-4.2 Infraestructura (Cloud)
+- Proveedor: AWS.
+- IaC: AWS CloudFormation.
+- Compute: EC2.
+- Balanceo: Application Load Balancer.
+- HTTPS: CloudFront.
+- Base de datos: RDS MySQL.
+- Monitoreo: CloudWatch y SNS.
 
- -Proveedor: AWS (Amazon Web Services).
+## 7. Restricciones del sandbox
 
- -IaC: AWS CloudFormation.  
+- Maximo 9 instancias EC2.
+- RDS permitido en clases pequenas y sin Multi-AZ.
+- IAM limitado, con acciones bloqueadas por politicas del laboratorio.
+- Route53 no permite registrar dominios.
+- CloudTrail puede estar bloqueado segun la sesion del laboratorio.
+- Auto Scaling Group no se pudo implementar en la cuenta final porque el sandbox bloqueo `LaunchConfiguration` y `LaunchTemplate`. La solucion final usa dos EC2 privadas detras del ALB como adaptacion reproducible.
 
- -Base de Datos: AWS RDS (MySQL/PostgreSQL).  
+## 8. Cronograma de trabajo
 
- -Servidor de Salto: Bastion Host para acceso seguro.
+| Fase | Actividades | Resultado |
+| --- | --- | --- |
+| 1. Aplicacion base | Modelos, rutas REST, autenticacion, catalogo y carrito | App funcional localmente |
+| 2. Checkout | Formulario de envio, ordenes, Mercado Pago sandbox y pantalla de confirmacion | Flujo de compra de prueba |
+| 3. Networking | VPC, subredes, IGW, NAT y security groups | Red aislada |
+| 4. Datos | RDS MySQL privado y conexion Sequelize | Persistencia en AWS |
+| 5. Computo | EC2 privadas, ALB, CloudFront y UserData | App publicada |
+| 6. Monitoreo | CloudWatch, SNS y CloudTrail opcional | Alertas y auditoria |
+| 7. Documentacion | Guia, rubrica, README y preparacion de sustentacion | Entregables finales |
 
- 5. Restricciones del Entorno (Sandbox)
+## 9. Recursos necesarios
 
- -El despliegue se ajustará a las limitaciones específicas del entorno de laboratorio:
+- Cuenta AWS Academy Sandbox.
+- AWS CLI v2 configurado.
+- Repositorio GitHub publico o accesible por las instancias.
+- Credenciales de prueba de Mercado Pago.
+- Correo para confirmar SNS.
+- Key pair `vockey` del laboratorio.
 
- -Límite de Cómputo: Máximo 9 instancias EC2 en total.  
+## 10. Riesgos y mitigaciones
 
- -Base de Datos: Instancias tipo db.t3.micro a db.t3.medium sin soporte para Multi-AZ.  
+| Riesgo | Mitigacion |
+| --- | --- |
+| Rollback por permisos del sandbox | Mantener plantillas simples, evitar recursos IAM nuevos y documentar restricciones. |
+| CloudFront tarda en propagar | Verificar estado de la distribucion antes de probar Mercado Pago. |
+| Mercado Pago rechaza `back_urls` HTTP | Usar `UseCloudFrontBaseUrl=true` para que `APP_BASE_URL` sea HTTPS. |
+| Dependencias no instalan en EC2 privada | Validar NAT Gateway, rutas privadas y salida a internet. |
+| CloudTrail bloqueado | Mantener parametro `EnableCloudTrail=false` y documentar la restriccion. |
 
- -Permisos: Acceso de solo lectura en IAM (uso de roles predefinidos).  
+## 11. Entregables
 
- -Red: No se permite el registro de dominios en Route53.
+- Codigo de aplicacion en `app/`.
+- Plantillas CloudFormation en `infra/`.
+- Script base de dependencias en `scripts/`.
+- Guia de despliegue en `docs/Guia_Despliegue_AWS.md`.
+- Cumplimiento de rubrica en `docs/Cumplimiento_Rubrica.md`.
+- README principal del repositorio.
+- Presentacion de sustentacion con arquitectura, desafios y lecciones aprendidas.
 
- ![alt text](image.png)
+![Topologia propuesta](image.png)

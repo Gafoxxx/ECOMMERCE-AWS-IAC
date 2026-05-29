@@ -34,11 +34,11 @@ Resources:
       Endpoint: !Ref NotificationEmail
       TopicArn: !Ref AlertTopic
 
-  HighCPUAlarm:
+  HighCPUInstance1Alarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: Ecommerce-High-CPU
-      AlarmDescription: Alerta cuando el promedio de CPU del ASG supera el 70 por ciento.
+      AlarmName: Ecommerce-High-CPU-Instance-1
+      AlarmDescription: Alerta cuando la CPU de la primera instancia privada supera el 70 por ciento.
       Namespace: AWS/EC2
       MetricName: CPUUtilization
       Statistic: Average
@@ -48,8 +48,29 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
       Dimensions:
-        - Name: AutoScalingGroupName
-          Value: !ImportValue Ecommerce-ASG-Name
+        - Name: InstanceId
+          Value: !ImportValue Ecommerce-WebApp-Instance-1-ID
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  HighCPUInstance2Alarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: Ecommerce-High-CPU-Instance-2
+      AlarmDescription: Alerta cuando la CPU de la segunda instancia privada supera el 70 por ciento.
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 70
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: InstanceId
+          Value: !ImportValue Ecommerce-WebApp-Instance-2-ID
       AlarmActions:
         - !Ref AlertTopic
       OKActions:
